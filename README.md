@@ -1,8 +1,20 @@
 # Linktree
 
-Backend for a multi-tenant SaaS linktree clone — users create a personal page that aggregates all their important links in one place, shareable via a single URL (`/:username`).
+Backend for a multi-tenant SaaS linktree clone — users create a personal page that aggregates all their important links in one place, shareable via a single URL (`/:username`). Also serves the public landing page for the product itself.
 
 Built with Django and PostgreSQL.
+
+## Features
+
+Core features being built first:
+
+- Public landing page (`/`)
+- User registration and login
+- Profile management (display name, bio, avatar URL)
+- Link management (add, edit, delete, reorder, show/hide)
+- Public profile page at `/:username`
+
+See [`docs/roadmap.md`](docs/roadmap.md) for the full roadmap, including planned theming, analytics, and social/embed features.
 
 ## Development environment
 
