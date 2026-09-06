@@ -1,0 +1,41 @@
+# ---- Build stage: compile/install dependencies ----
+FROM python:3.12-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# ---- Runtime stage: minimal image, no build tools ----
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/home/django/.local/bin:$PATH
+
+RUN addgroup --system django && adduser --system --ingroup django django
+
+WORKDIR /app
+
+COPY --from=builder --chown=django:django /root/.local /home/django/.local
+COPY --chown=django:django . .
+
+RUN mkdir -p /app/staticfiles && chown django:django /app/staticfiles
+
+USER django
+
+RUN python manage.py collectstatic --noinput
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/admin/login/')"
+
+ENTRYPOINT ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn linktree_project.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --access-logfile - --error-logfile -"]

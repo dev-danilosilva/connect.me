@@ -1,0 +1,66 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-linktree}
+      POSTGRES_USER: ${POSTGRES_USER:-linktree}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linktree}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-linktree}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      POSTGRES_DB: ${POSTGRES_DB:-linktree}
+      POSTGRES_USER: ${POSTGRES_USER:-linktree}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linktree}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    volumes:
+      - static_volume:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      NGINX_ENVSUBST_FILTER: ^DOMAIN$$
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - static_volume:/app/staticfiles:ro
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $$!; done;"
+
+volumes:
+  postgres_data:
+  static_volume:
+  certbot_certs:
+  certbot_www:
