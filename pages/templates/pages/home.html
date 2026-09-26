@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}SharedLink · Every link, one page{% endblock %}
+{% block content %}
+<div class="bento-page">
+  <div class="tile-backdrop">
+    <div class="tile-glow tile-glow-1"></div>
+    <div class="tile-glow tile-glow-2"></div>
+    <div class="tile-glow tile-glow-3"></div>
+    <div class="tile-glow tile-glow-4"></div>
+    <div class="tile-glow tile-glow-5"></div>
+    <div class="tile-glow tile-glow-6"></div>
+  </div>
+
+  <nav class="tile-nav">
+    <a href="/" class="tile-nav-brand">
+      <div class="tile-nav-mark">{% include "icons/link.html" %}</div>
+      SharedLink
+    </a>
+    <a href="{% url 'register' %}" class="btn btn-filled btn-inline">Get started</a>
+  </nav>
+
+  <div class="tile-grid">
+    <div class="tile tile-hero">
+      <div class="tile-hero-copy">
+        <span class="tile-eyebrow">ONE LINK FOR EVERYTHING</span>
+        <h1 class="tile-hero-title">Every link. One page.</h1>
+        <p class="tile-hero-subtitle">Create a single page for everything you share, then see exactly how it performs — free, no catches.</p>
+        <div class="tile-hero-actions">
+          <a href="{% url 'register' %}" class="btn btn-filled btn-inline">Get started</a>
+        </div>
+      </div>
+      <div class="tile-hero-orb">{% include "illustrations/constellation.html" %}</div>
+    </div>
+
+    <div class="tile tile-design">
+      <h2 class="tile-title">Design</h2>
+      <p class="tile-copy">Use a pre-made template or personalize with themes, fonts, and photos.</p>
+      <div class="tile-illustration">{% include "illustrations/design.html" %}</div>
+    </div>
+
+    <div class="tile tile-organize">
+      <h2 class="tile-title">Organize</h2>
+      <p class="tile-copy">Reorder and manage every link from one simple dashboard.</p>
+      <div class="tile-illustration">{% include "illustrations/organize.html" %}</div>
+    </div>
+
+    <div class="tile tile-url">
+      <h2 class="tile-title">Custom URL</h2>
+      <p class="tile-copy">Claim a clean link that's all yours to share.</p>
+      <div class="tile-illustration">{% include "illustrations/url.html" %}</div>
+    </div>
+
+    <div class="tile tile-analytics">
+      <h2 class="tile-title">Analytics</h2>
+      <p class="tile-copy">Track clicks, trends, and growth for every link over time.</p>
+      <div class="tile-illustration">
+        <div class="chart-panel">{% include "illustrations/chart.html" %}</div>
+      </div>
+    </div>
+
+    <div class="tile tile-share">
+      <h2 class="tile-title">Share anywhere</h2>
+      <p class="tile-copy">One link works everywhere you post.</p>
+      <div class="tile-illustration">{% include "illustrations/share.html" %}</div>
+    </div>
+
+    <div class="tile tile-free">
+      <h2 class="tile-title">Free forever</h2>
+      <p class="tile-copy">No paywalls. No trials. No credit card.</p>
+      <div class="tile-illustration">
+        <div class="price-panel">{% include "illustrations/price_tag.html" %}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

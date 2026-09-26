@@ -1,0 +1,63 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{% if form.errors %}{% translate "Error:" %} {% endif %}{{ block.super }}{% endblock %}
+
+{% block bodyclass %}{{ block.super }} admin-login-page{% endblock %}
+
+{% block usertools %}{% endblock %}
+{% block nav-global %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block coltype %}colM admin-login-col{% endblock %}
+
+{% block content %}
+<div class="admin-login-card">
+  <div class="admin-login-header">
+    <span class="admin-login-avatar">{% include "icons/user.html" %}</span>
+    <h1>Admin sign in</h1>
+  </div>
+
+  {% if form.errors and not form.non_field_errors %}
+    <p class="admin-login-error">{% translate "Please correct the error below." %}</p>
+  {% endif %}
+  {% if form.non_field_errors %}
+    {% for error in form.non_field_errors %}
+      <p class="admin-login-error">{{ error }}</p>
+    {% endfor %}
+  {% endif %}
+  {% if user.is_authenticated %}
+    <p class="admin-login-error">
+      {% blocktranslate trimmed %}
+        You are authenticated as {{ username }}, but are not authorized to
+        access this page. Would you like to login to a different account?
+      {% endblocktranslate %}
+    </p>
+  {% endif %}
+
+  <form action="{{ app_path }}" method="post" id="login-form" class="admin-login-form">
+    {% csrf_token %}
+    <div class="admin-login-field">
+      {{ form.username.label_tag }}
+      {{ form.username.errors }}
+      {{ form.username }}
+    </div>
+    <div class="admin-login-field">
+      {{ form.password.label_tag }}
+      {{ form.password.errors }}
+      {{ form.password }}
+      <input type="hidden" name="next" value="{{ next }}">
+    </div>
+    {% url 'admin_password_reset' as password_reset_url %}
+    {% if password_reset_url %}
+      <div class="admin-login-reset">
+        <a href="{{ password_reset_url }}">{% translate "Forgotten your login credentials?" %}</a>
+      </div>
+    {% endif %}
+    <div class="admin-login-submit">
+      <input type="submit" value="{% translate 'Log in' %}">
+    </div>
+  </form>
+</div>
+{% endblock %}

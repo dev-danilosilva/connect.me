@@ -1,0 +1,509 @@
+/* SharedLink admin theme -- reskins django.contrib.admin via its own
+   documented CSS custom properties (see admin/css/base.css / dark_mode.css).
+   No structural HTML is touched; changelist/change-form/filter/action
+   templates are untouched and inherit this automatically.
+
+   Dark-only: templates/admin/base_site.html forces
+   document.documentElement.dataset.theme = "dark" unconditionally (no
+   toggle exists), which activates Django's own comprehensive
+   html[data-theme="dark"] block in dark_mode.css (body-fg, hairlines,
+   message colors, etc.) -- we only need to layer brand colors on top of
+   that here, not redefine every variable ourselves.
+
+   --color-primary/-dark stay the vivid brand purple everywhere (used for
+   FILLED backgrounds -- buttons, avatar/brand marks -- where white text/
+   icons need good contrast regardless of theme). --color-accent is the
+   lighter lilac used for TEXT/links sitting on the dark surface, where the
+   vivid purple would read too dark against a dark background. */
+
+:root {
+  color-scheme: dark;
+  --color-primary: #6b006d;
+  --color-primary-dark: #4a0e4e;
+  --color-accent: #d29ad4;
+  --color-accent-dark: #b06bb3;
+  --color-surface: #1c0e1f;
+  --color-surface-container: #2e1a32;
+  --color-outline: #4a2f52;
+  --color-on-surface: #f3ebf6;
+  --color-on-surface-muted: #c3a8c9;
+  --color-on-primary: #ffffff;
+  --color-error: #ff7a90;
+}
+
+/* ---------- Django admin's own theming variables ---------- */
+
+html[data-theme="dark"] {
+  --primary: #d29ad4;
+  --secondary: #b06bb3;
+  --accent: #f2547c;
+  --primary-fg: #1a0a1c;
+
+  --header-color: #ffffff;
+  --header-branding-color: var(--header-color);
+  --header-bg: linear-gradient(135deg, #6b006d, #2e0b30);
+  --header-link-color: #ffffff;
+
+  --link-fg: #d29ad4;
+  --link-hover-color: #efc7f0;
+  --link-selected-fg: #efc7f0;
+
+  --button-bg: #6b006d;
+  --button-hover-bg: #4a0e4e;
+  --default-button-bg: #4a0e4e;
+  --default-button-hover-bg: #6b006d;
+
+  --body-bg: #1c0e1f;
+  --darkened-bg: #241226;
+  --selected-bg: #2e1a32;
+
+  /* dark_mode.css defines --breadcrumbs-bg: var(--primary) -- since our
+     --primary is a light lilac (for text/links), that made the breadcrumb
+     bar render as a bright pink strip instead of a fill. Override the bar
+     itself explicitly rather than fighting the --primary reference. */
+  --breadcrumbs-bg: #4a0e4e;
+  --breadcrumbs-fg: #d9c3e0;
+  --breadcrumbs-link-fg: #ffffff;
+
+  --font-family-primary:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  font-family: var(--font-family-primary);
+}
+
+#branding,
+.module h2,
+.module caption,
+fieldset h2 {
+  font-family: "Poppins", "Inter", sans-serif;
+}
+
+/* Django's base.css has `.dashboard #content { width: 600px; }`, a
+   leftover fixed width from the stock two-column dashboard (narrow content
+   + a wide #content-related sidebar). We dropped the sidebar entirely for
+   a full-width layout, but the `dashboard` body class (and this rule) is
+   still inherited from admin/index.html -- neutralize it so #content
+   actually grows to fill .main via its own `flex: 1 0; max-width: 100%`. */
+.dashboard #content {
+  width: auto;
+}
+
+/* ---------- header / branding ---------- */
+
+#header {
+  background: var(--header-bg);
+  padding: 12px 24px;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--header-color);
+  font-weight: 700;
+  font-size: 17px;
+  text-decoration: none;
+}
+
+.admin-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.admin-brand-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Django's own #site-name a:link/:visited rule (base.css) sets color from
+   --accent, not --header-color/--header-branding-color -- on our purple
+   gradient header that rendered as pink-on-purple at ~3.4-4.3:1 contrast
+   (below the 4.5:1 text threshold). Match its selector to win the cascade
+   and force the readable header color instead. */
+#site-name a:link,
+#site-name a:visited {
+  color: var(--header-color);
+}
+
+.admin-view-site-link {
+  color: var(--header-link-color);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+.admin-view-site-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* ---------- sidebar ---------- */
+
+#nav-sidebar {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-outline);
+}
+
+.current-app .section:link,
+.current-app .section:visited {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* ---------- buttons ---------- */
+
+.button,
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+a.button {
+  border-radius: 999px;
+}
+
+/* ---------- admin login page ---------- */
+
+body.admin-login-page {
+  background: linear-gradient(160deg, #1c0e1f, #241226 55%, #2e0b30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+body.admin-login-page #container {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+body.admin-login-page #header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.admin-login-page #branding .admin-brand {
+  color: var(--color-accent);
+}
+
+body.admin-login-page #branding .admin-brand-mark {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: #fff;
+}
+
+body.admin-login-page .admin-view-site-link {
+  color: var(--color-accent);
+}
+
+body.admin-login-page #content {
+  padding: 0;
+}
+
+.admin-login-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 36px 28px;
+  border-radius: 24px;
+  background: rgba(46, 26, 50, 0.75);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.admin-login-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.admin-login-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+}
+
+.admin-login-header h1 {
+  margin: 0;
+  font-family: "Poppins", "Inter", sans-serif;
+  font-size: 22px;
+  color: var(--color-on-surface);
+}
+
+.admin-login-error {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 122, 144, 0.14);
+  color: var(--color-error);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.admin-login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-login-field {
+  margin-bottom: 16px;
+}
+
+.admin-login-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-on-surface-muted);
+}
+
+.admin-login-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1.5px solid var(--color-outline);
+  border-radius: 14px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
+}
+
+.admin-login-field input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  border-width: 2px;
+}
+
+.admin-login-reset {
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.admin-login-reset a {
+  color: var(--color-accent);
+}
+
+.admin-login-submit input[type="submit"] {
+  width: 100%;
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(107, 0, 109, 0.3);
+}
+
+.admin-login-submit input[type="submit"]:hover {
+  background: var(--color-primary-dark);
+}
+
+/* ---------- admin dashboard: KPIs + chart ---------- */
+
+.admin-dashboard {
+  margin-bottom: 28px;
+}
+
+.admin-dashboard-header {
+  margin-bottom: 16px;
+}
+
+.admin-dashboard-header h2 {
+  margin: 0 0 4px;
+}
+
+.admin-dashboard-header p {
+  margin: 0;
+  color: var(--color-on-surface-muted);
+  font-size: 13px;
+}
+
+.admin-dashboard-header code {
+  font-size: 0.9em;
+  background: rgba(210, 154, 212, 0.16);
+  color: var(--color-on-surface);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.admin-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.admin-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-muted);
+}
+
+.admin-stat-value {
+  font-family: "Poppins", "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--color-accent);
+}
+
+.admin-dashboard-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .admin-dashboard-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-chart-card,
+.admin-recent-card {
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.admin-chart-card {
+  min-width: 0;
+}
+
+.admin-chart-header {
+  margin-bottom: 8px;
+}
+
+.admin-chart-header h3 {
+  margin: 0 0 4px;
+  font-family: "Poppins", "Inter", sans-serif;
+  font-size: 15px;
+  color: var(--color-on-surface);
+}
+
+.admin-chart-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-on-surface-muted);
+}
+
+.admin-chart-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 280px;
+}
+
+.admin-chart-empty {
+  padding: 20px 0 28px;
+  font-size: 13.5px;
+  color: var(--color-on-surface-muted);
+}
+
+/* ---------- recent actions (moved out of #content-related into a peer card) ---------- */
+
+.admin-recent-card h3 {
+  margin: 0 0 4px;
+  font-family: "Poppins", "Inter", sans-serif;
+  font-size: 15px;
+  color: var(--color-on-surface);
+}
+
+.admin-recent-card h4 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-on-surface-muted);
+}
+
+.admin-recent-empty {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--color-on-surface-muted);
+}
+
+.admin-recent-card .actionlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.admin-recent-card .actionlist li {
+  padding: 8px 0;
+  border-top: 1px solid var(--color-outline);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.admin-recent-card .actionlist li:first-child {
+  border-top: none;
+}
+
+.admin-recent-card .actionlist a {
+  color: var(--color-accent);
+}
+
+.admin-recent-card .actionlist .mini.quiet {
+  color: var(--color-on-surface-muted);
+  font-size: 12px;
+}
+
+/* ---------- app list: full-width responsive card grid ---------- */
+
+.app-list {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.app-list .module {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--color-outline);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  background: var(--color-surface-container);
+}

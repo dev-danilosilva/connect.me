@@ -1,0 +1,49 @@
+{% load static %}
+<div class="modal-scrim" id="create-page-modal" {% if not open_create_modal %}hidden{% endif %}>
+  <div class="modal">
+    <button type="button" class="modal-close" aria-label="Close" data-modal-close>
+      {% include "icons/close.html" %}
+    </button>
+    <h2 class="modal-title">Create a new page</h2>
+    <p class="modal-subtitle">Choose a unique handle for your public profile URL.</p>
+
+    <form method="post" action="{% url 'create_page' %}" id="create-page-form">
+      {% csrf_token %}
+      <div class="modal-handle-row">
+        <div class="field-input-wrap modal-handle-input-wrap">
+          <span class="modal-handle-prefix">mylinks.app/</span>
+          <input
+            id="create-page-handle"
+            name="handle"
+            type="text"
+            value="{{ create_form.handle.value|default:'' }}"
+            placeholder="your-handle"
+            class="field-input"
+            autocomplete="off"
+          >
+        </div>
+        <button
+          type="button"
+          class="modal-search-btn"
+          id="check-handle-btn"
+          aria-label="Check availability"
+          data-check-url="{% url 'check_handle_availability' %}"
+          disabled
+        >
+          {% include "icons/search.html" %}
+        </button>
+      </div>
+
+      <div class="handle-status{% if create_form.errors.handle %} handle-status-taken{% endif %}" id="handle-status">
+        {% if create_form.errors.handle %}
+          {% include "icons/close.html" %}
+          <span>{{ create_form.errors.handle.0 }}</span>
+        {% endif %}
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-filled" id="create-page-submit" disabled>Create</button>
+      </div>
+    </form>
+  </div>
+</div>

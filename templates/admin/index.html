@@ -1,0 +1,94 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static admin_filters %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
+
+{% block coltype %}colM{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="admin-dashboard-page">
+  <section class="admin-dashboard" id="admin-dashboard" data-stats-url="{% url 'admin_dashboard_data' %}">
+    <div class="admin-dashboard-header">
+      <h2>Analytics</h2>
+      <p>A snapshot of users and link pages. "Links" here means link pages (<code>LinkPage</code>) &mdash; there's no separate per-link model yet.</p>
+    </div>
+
+    <div class="admin-stat-grid" id="admin-stat-grid">
+      <div class="admin-stat-card">
+        <span class="admin-stat-label">Users created</span>
+        <span class="admin-stat-value" data-stat="total_users">&ndash;</span>
+      </div>
+      <div class="admin-stat-card">
+        <span class="admin-stat-label">Link pages created</span>
+        <span class="admin-stat-value" data-stat="total_pages">&ndash;</span>
+      </div>
+      <div class="admin-stat-card">
+        <span class="admin-stat-label">Average pages / user</span>
+        <span class="admin-stat-value" data-stat="average_pages_per_user">&ndash;</span>
+      </div>
+      <div class="admin-stat-card">
+        <span class="admin-stat-label">P99 pages / user</span>
+        <span class="admin-stat-value" data-stat="p99_pages_per_user">&ndash;</span>
+      </div>
+    </div>
+
+    <div class="admin-dashboard-row">
+      <div class="admin-chart-card">
+        <div class="admin-chart-header">
+          <h3>Link pages per user</h3>
+          <p>How many pages a user has created, and how many users fall at each count.</p>
+        </div>
+        <div class="admin-chart-canvas-wrap">
+          <canvas id="admin-dashboard-chart" role="img" aria-label="Histogram of link pages created per user"></canvas>
+        </div>
+      </div>
+
+      <div class="admin-recent-card">
+        <h3>{% translate 'Recent actions' %}</h3>
+        <h4>{% translate 'My actions' %}</h4>
+        {% load log %}
+        {% get_admin_log 10 as admin_log for_user user %}
+        {% if not admin_log %}
+          <p class="admin-recent-empty">{% translate 'None available' %}</p>
+        {% else %}
+          <ul class="actionlist">
+            {% for entry in admin_log %}
+              <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
+                {% if entry.is_deletion or not entry.get_admin_url %}
+                  {{ entry.object_repr|to_object_display_value }}
+                {% else %}
+                  <a href="{{ entry.get_admin_url }}">{{ entry.object_repr|to_object_display_value }}</a>
+                {% endif %}
+                <br>
+                {% if entry.content_type %}
+                  <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                {% else %}
+                  <span class="mini quiet">{% translate 'Unknown content' %}</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <div class="app-list">
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+  </div>
+</div>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}
+
+{% block extrabody %}{{ block.super }}
+<script src="{% static 'js/vendor/chart.umd.js' %}"></script>
+<script src="{% static 'js/admin-dashboard.js' %}"></script>
+{% endblock %}

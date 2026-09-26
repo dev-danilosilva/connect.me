@@ -15,8 +15,19 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+
+from pages.views import admin_dashboard_data
+
+admin.site.site_header = "SharedLink admin"
+admin.site.site_title = "SharedLink admin"
+admin.site.index_title = "Dashboard"
 
 urlpatterns = [
+    # Must come before admin.site.urls, which would otherwise swallow
+    # /admin/dashboard-data/ trying to resolve it as an app label.
+    path('admin/dashboard-data/', admin_dashboard_data, name='admin_dashboard_data'),
     path('admin/', admin.site.urls),
+    path('', include('pages.urls')),
+    path('', include('accounts.urls')),
 ]

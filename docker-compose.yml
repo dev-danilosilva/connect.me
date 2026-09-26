@@ -17,11 +17,12 @@ services:
       retries: 5
 
   web:
+    profiles: ["full-docker"]
     build: .
     restart: unless-stopped
     environment:
       SECRET_KEY: ${SECRET_KEY:-}
-      DEBUG: ${DEBUG:-True}
+      DEBUG: ${DEBUG:-False}
       POSTGRES_DB: ${POSTGRES_DB:-linktree}
       POSTGRES_USER: ${POSTGRES_USER:-linktree}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linktree}

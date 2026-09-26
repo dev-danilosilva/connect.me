@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · SharedLink{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+  <div class="tile-backdrop">
+    <div class="tile-glow tile-glow-1"></div>
+    <div class="tile-glow tile-glow-2"></div>
+    <div class="tile-glow tile-glow-4"></div>
+  </div>
+
+  <nav class="dashboard-sidebar">
+    <div class="dashboard-sidebar-mark">{% include "icons/link.html" %}</div>
+    <div class="dashboard-sidebar-nav">
+      <button type="button" class="dashboard-nav-icon dashboard-nav-icon-active" aria-label="Pages" aria-current="page">
+        {% include "icons/grid.html" %}
+      </button>
+      <button type="button" class="dashboard-nav-icon" aria-label="Analytics (coming soon)" disabled>
+        {% include "icons/chart.html" %}
+      </button>
+      <button type="button" class="dashboard-nav-icon" aria-label="Links (coming soon)" disabled>
+        {% include "icons/split.html" %}
+      </button>
+    </div>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="dashboard-sidebar-avatar" aria-label="Log out">
+        <div class="avatar">{% include "icons/user.html" %}</div>
+      </button>
+    </form>
+  </nav>
+
+  <div class="dashboard-main">
+    <div class="dashboard-header">
+      <div>
+        <span class="dashboard-eyebrow">Your pages</span>
+        <h1 class="dashboard-title">Welcome back, {{ user.display_name }}</h1>
+        <p class="dashboard-subtitle">Create and manage all of your link pages in one place.</p>
+      </div>
+      <button type="button" class="btn btn-filled btn-inline dashboard-create-btn" data-modal-open>
+        {% include "icons/plus.html" %}
+        <span>Create new page</span>
+      </button>
+    </div>
+
+    <div class="page-card-grid">
+      {% for page in pages %}
+        <div class="page-card">
+          <div class="page-card-icon">{% include "icons/link.html" %}</div>
+          <h2 class="page-card-title">{{ page.title }}</h2>
+          <p class="page-card-slug">mylinks.app/{{ page.handle }}</p>
+          <div class="page-card-meta"><span>0 links</span></div>
+        </div>
+      {% endfor %}
+      <button type="button" class="page-card page-card-create" data-modal-open>
+        <div class="page-card-create-icon">{% include "icons/plus.html" %}</div>
+        <span class="page-card-create-label">Create new page</span>
+      </button>
+    </div>
+  </div>
+
+  {% include "partials/_create_modal.html" %}
+</div>
+{% endblock %}

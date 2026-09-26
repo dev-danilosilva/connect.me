@@ -13,18 +13,36 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Loads .env into the process environment for local `manage.py runserver`
+# use. No-op if .env is absent (Docker/prod set real env vars instead).
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY') or 'django-insecure-*1uey*g)+j%(zf%eibu-xr5$jv72l&vl_4s8a!y-q5_l27o6o9'
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# Defaults to False (fails closed) -- dev opts in explicitly via .env's
+# DEBUG=True rather than this ever silently defaulting to debug mode.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# The insecure fallback below is only ever used in DEBUG mode, for local
+# dev convenience -- a production run (DEBUG=False) with no real
+# SECRET_KEY env var refuses to start rather than silently using it.
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'SECRET_KEY environment variable must be set when DEBUG=False.'
+        )
+    SECRET_KEY = 'django-insecure-*1uey*g)+j%(zf%eibu-xr5$jv72l&vl_4s8a!y-q5_l27o6o9'
 
 ALLOWED_HOSTS = [h for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h]
 
@@ -33,6 +51,19 @@ CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').sp
 # Nginx sets X-Forwarded-Proto, so Django can correctly detect HTTPS when
 # TLS is terminated at the reverse proxy instead of at Django itself.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # 30 days; raise once confident nothing needs plain HTTP
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # No SECURE_SSL_REDIRECT here: nginx.conf.template already redirects
+    # http->https at the reverse-proxy layer for real traffic. Enabling it
+    # in Django would also redirect Dockerfile.prod's HEALTHCHECK, which
+    # calls gunicorn directly over plain HTTP inside the container
+    # (bypassing nginx entirely) -- that redirect would break the
+    # healthcheck since nothing serves HTTPS on the container's own port.
 
 
 # Application definition
@@ -44,7 +75,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'accounts',
+    'pages',
 ]
+
+AUTH_USER_MODEL = 'accounts.User'
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -61,7 +100,7 @@ ROOT_URLCONF = 'linktree_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -127,13 +166,57 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# MAILERS (not the singular EMAIL_BACKEND, deprecated as of this Django
+# version -- see django.core.mail.deprecation) is Django's current
+# dict-of-named-connections email config, the same shape as DATABASES.
 
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': os.environ.get(
+            'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend'
+        ),
+    },
+}
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'webmaster@localhost')
+
+
+# Logging
+# https://docs.djangoproject.com/en/6.1/topics/logging/
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
     },
 }

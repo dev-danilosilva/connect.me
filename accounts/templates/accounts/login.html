@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Login · SharedLink{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <nav class="auth-nav">
+    <a href="/" class="auth-nav-brand">
+      <div class="auth-nav-mark">{% include "icons/link.html" %}</div>
+      SharedLink
+    </a>
+  </nav>
+
+  <div class="auth-glow-backdrop">
+    <div class="auth-glow auth-glow-1"></div>
+    <div class="auth-glow auth-glow-2"></div>
+    <div class="auth-glow auth-glow-3"></div>
+    <div class="auth-glow auth-glow-4"></div>
+  </div>
+
+  <div class="auth-card auth-card-single">
+    <div class="auth-header">
+      <div class="avatar">{% include "icons/user.html" %}</div>
+      <h1 class="headline">Welcome back</h1>
+    </div>
+
+    <form class="auth-form" method="post" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="login-email" class="field-label">Email</label>
+        <div class="field-input-wrap">
+          <span class="field-icon">{% include "icons/mail.html" %}</span>
+          <input
+            id="login-email"
+            name="email"
+            type="email"
+            value="{{ form.email.value|default:'' }}"
+            placeholder="Email"
+            class="field-input"
+            autocomplete="email"
+          >
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="login-password" class="field-label">Password</label>
+        <div class="field-input-wrap">
+          <span class="field-icon">{% include "icons/lock.html" %}</span>
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            placeholder="Password"
+            class="field-input"
+            autocomplete="current-password"
+          >
+          <button type="button" class="field-toggle" data-password-toggle="login-password" aria-label="Show password">
+            {% include "icons/eye.html" %}
+          </button>
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="handle-status handle-status-taken">
+          {% include "icons/close.html" %}
+          <span>{{ form.non_field_errors.0 }}</span>
+        </div>
+      {% endif %}
+
+      <div class="actions">
+        <button type="submit" class="btn btn-filled" id="login-submit">Login</button>
+        <a href="{% url 'register' %}" class="btn btn-outlined">Register</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

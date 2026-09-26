@@ -1,0 +1,22 @@
+#!/bin/sh
+# Runs the fast unit test suite (accounts, pages) before allowing a commit.
+# e2e/ is excluded here since it spins up a browser + LiveServer and is too
+# slow for a pre-commit check; it still runs in CI / `pytest` locally.
+#
+# Activated via: git config core.hooksPath .githooks
+
+if [ -x venv/bin/pytest ]; then
+    PYTEST=venv/bin/pytest
+else
+    PYTEST=pytest
+fi
+
+"$PYTEST" accounts pages
+status=$?
+
+if [ $status -ne 0 ]; then
+    echo "" >&2
+    echo "pre-commit: unit tests failed, commit aborted (use --no-verify to skip)" >&2
+fi
+
+exit $status
