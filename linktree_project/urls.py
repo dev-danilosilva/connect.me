@@ -28,6 +28,7 @@ urlpatterns = [
     # /admin/dashboard-data/ trying to resolve it as an app label.
     path('admin/dashboard-data/', AdminDashboardDataAPIView.as_view(), name='admin_dashboard_data'),
     path('admin/', admin.site.urls),
+    path('api/', include('personal_links_manager.api_urls')),
     path('', include('personal_links_manager.urls')),
     path('', include('accounts.urls')),
 ]
