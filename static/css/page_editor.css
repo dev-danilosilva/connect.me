@@ -80,3 +80,11 @@
   color: #c0392b;
   cursor: pointer;
 }
+
+.block-editor > button:not(.delete-block-button) {
+  align-self: flex-end;
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+}

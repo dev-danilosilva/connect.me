@@ -10,9 +10,11 @@ module Main exposing
     , deviceWidth
     , flagsDecoder
     , main
+    , moveBlock
     , updateBlockContent
     )
 
+import Array
 import Browser
 import Dict exposing (Dict)
 import Html exposing (Html, button, div, text)
@@ -142,6 +144,59 @@ updateBlockContent editLink editHeader editSocial content =
             SocialIconsContent (editSocial social)
 
 
+moveBlock : Int -> Int -> List Block -> List Block
+moveBlock blockId delta blocks =
+    let
+        ids =
+            List.map .id blocks
+
+        currentIndex =
+            List.foldl
+                (\( index, id ) found ->
+                    if id == blockId then
+                        Just index
+
+                    else
+                        found
+                )
+                Nothing
+                (List.indexedMap Tuple.pair ids)
+
+        newIndex =
+            currentIndex |> Maybe.map (\i -> i + delta)
+    in
+    case ( currentIndex, newIndex ) of
+        ( Just from, Just to ) ->
+            if to < 0 || to >= List.length blocks then
+                blocks
+
+            else
+                swapAt from to blocks
+
+        _ ->
+            blocks
+
+
+swapAt : Int -> Int -> List a -> List a
+swapAt i j list =
+    let
+        array =
+            Array.fromList list
+
+        vi =
+            Array.get i array
+
+        vj =
+            Array.get j array
+    in
+    case ( vi, vj ) of
+        ( Just a, Just b ) ->
+            array |> Array.set i b |> Array.set j a |> Array.toList
+
+        _ ->
+            list
+
+
 socialIconDecoder : Decoder SocialIcon
 socialIconDecoder =
     Decode.map2 SocialIcon
@@ -235,6 +290,8 @@ type Msg
     | BlockSaved Int (Result Http.Error Block)
     | DeleteBlock Int
     | BlockDeleted Int (Result Http.Error ())
+    | MoveBlock Int Int
+    | Reordered (List Block) (Result Http.Error PageData)
 
 
 fetchPage : Flags -> Cmd Msg
@@ -313,6 +370,19 @@ deleteBlock flags blockId =
         , url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/blocks/" ++ String.fromInt blockId ++ "/"
         , body = Http.emptyBody
         , expect = Http.expectWhatever (BlockDeleted blockId)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+reorderBlocks : Flags -> List Block -> Cmd Msg
+reorderBlocks flags blocks =
+    Http.request
+        { method = "POST"
+        , headers = [ Http.header "X-CSRFToken" flags.csrfToken ]
+        , url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/blocks/reorder/"
+        , body = Http.jsonBody (Encode.object [ ( "block_ids", Encode.list (\b -> Encode.int b.id) blocks ) ])
+        , expect = Http.expectJson (Reordered blocks) pageDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -416,6 +486,31 @@ update msg model =
         BlockDeleted _ (Err _) ->
             ( { model | error = Just "Couldn't delete that block. Reload to see the real state." }, Cmd.none )
 
+        MoveBlock blockId delta ->
+            case model.page of
+                Just p ->
+                    let
+                        reordered =
+                            moveBlock blockId delta p.blocks
+                    in
+                    ( { model | page = Just { p | blocks = reordered } }
+                    , reorderBlocks model.flags reordered
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Reordered _ (Ok pageData) ->
+            ( { model | page = Just pageData }, Cmd.none )
+
+        Reordered previousBlocks (Err _) ->
+            ( { model
+                | page = Maybe.map (\p -> { p | blocks = previousBlocks }) model.page
+                , error = Just "Couldn't reorder blocks. Reverted."
+              }
+            , Cmd.none
+            )
+
 
 viewDeviceButton : Device -> Device -> Html Msg
 viewDeviceButton current device =
@@ -462,42 +557,53 @@ deleteButton block =
         [ Html.i [ class "fa-solid fa-trash" ] [] ]
 
 
+moveButtons : Block -> List (Html Msg)
+moveButtons block =
+    [ button [ onClick (MoveBlock block.id (-1)) ] [ Html.i [ class "fa-solid fa-arrow-up" ] [] ]
+    , button [ onClick (MoveBlock block.id 1) ] [ Html.i [ class "fa-solid fa-arrow-down" ] [] ]
+    ]
+
+
 viewBlockEditor : Block -> Html Msg
 viewBlockEditor block =
     case block.content of
         LinkContent link ->
             div [ class "block-editor" ]
-                [ Html.input
+                ([ Html.input
                     [ Html.Attributes.value link.label
                     , Html.Events.onInput
                         (\v -> EditBlock block.id (updateBlockContent (\l -> { l | label = v }) identity identity block.content))
                     ]
                     []
-                , Html.input
+                 , Html.input
                     [ Html.Attributes.value link.url
                     , Html.Events.onInput
                         (\v -> EditBlock block.id (updateBlockContent (\l -> { l | url = v }) identity identity block.content))
                     ]
                     []
-                , deleteButton block
-                ]
+                 , deleteButton block
+                 ]
+                    ++ moveButtons block
+                )
 
         HeaderContent header ->
             div [ class "block-editor" ]
-                [ Html.input
+                ([ Html.input
                     [ Html.Attributes.value header.displayName
                     , Html.Events.onInput
                         (\v -> EditBlock block.id (updateBlockContent identity (\h -> { h | displayName = v }) identity block.content))
                     ]
                     []
-                , Html.textarea
+                 , Html.textarea
                     [ Html.Attributes.value header.bio
                     , Html.Events.onInput
                         (\v -> EditBlock block.id (updateBlockContent identity (\h -> { h | bio = v }) identity block.content))
                     ]
                     []
-                , deleteButton block
-                ]
+                 , deleteButton block
+                 ]
+                    ++ moveButtons block
+                )
 
         SocialIconsContent social ->
             div [ class "block-editor" ]
@@ -547,6 +653,7 @@ viewBlockEditor block =
                             [ text "Add icon" ]
                        , deleteButton block
                        ]
+                    ++ moveButtons block
                 )
 
 

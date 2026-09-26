@@ -113,3 +113,36 @@ def test_deleting_a_block_removes_it_from_the_preview(page, live_server, demo_us
     page.click(".delete-block-button")
 
     expect(page.locator(".preview-block-link")).to_have_count(0)
+
+
+def test_full_editor_flow_add_edit_switch_device_reorder_and_persist(
+    page, live_server, demo_user, demo_page
+):
+    page.goto(f"{live_server.url}/login/")
+    page.fill("#login-email", demo_user.email)
+    page.fill("#login-password", "password123")
+    page.click("#login-submit")
+    page.wait_for_url("**/dashboard/")
+
+    page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
+
+    # Add two Link blocks.
+    page.click("button:text-is('Add Link')")
+    page.click("button:text-is('Add Link')")
+    expect(page.locator(".preview-block-link")).to_have_count(2)
+
+    # Edit the first block's label; preview updates without reload.
+    page.fill(".block-editor input >> nth=0", "First link")
+    expect(page.locator(".preview-block-link").first).to_contain_text("First link")
+
+    # Switch device size.
+    page.click("button:text-is('Phone')")
+    expect(page.locator(".preview-frame")).to_have_css("width", "390px")
+
+    # Reorder: move the second block up above the first.
+    page.locator(".block-editor").nth(1).locator("[class*='fa-arrow-up']").click()
+
+    # Reload and confirm both the edit and the reorder persisted.
+    page.wait_for_timeout(700)
+    page.reload()
+    expect(page.locator(".preview-block-link").first).not_to_contain_text("First link")

@@ -2,13 +2,14 @@ module MainTest exposing
     ( blockDecoderSuite
     , canAddHeaderSuite
     , deviceSuite
+    , moveBlockSuite
     , suite
     , updateBlockContentSuite
     )
 
 import Expect
 import Json.Decode as Decode
-import Main exposing (Block, BlockContent(..), Device(..), blockDecoder, canAddHeader, deviceWidth, flagsDecoder, updateBlockContent)
+import Main exposing (Block, BlockContent(..), Device(..), blockDecoder, canAddHeader, deviceWidth, flagsDecoder, moveBlock, updateBlockContent)
 import Test exposing (Test, describe, test)
 
 
@@ -85,4 +86,32 @@ updateBlockContentSuite =
                 Expect.equal
                     (LinkContent { label = "New", url = "https://old.example" })
                     (updateBlockContent (\l -> { l | label = "New" }) identity identity original)
+        ]
+
+
+moveBlockSuite : Test
+moveBlockSuite =
+    describe "moveBlock"
+        [ test "moving a block up swaps it with its predecessor" <|
+            \_ ->
+                let
+                    blocks =
+                        [ Block 1 0 True (LinkContent { label = "A", url = "https://a.example" })
+                        , Block 2 1 True (LinkContent { label = "B", url = "https://b.example" })
+                        ]
+                in
+                moveBlock 2 (-1) blocks
+                    |> List.map .id
+                    |> Expect.equal [ 2, 1 ]
+        , test "moving the first block up is a no-op" <|
+            \_ ->
+                let
+                    blocks =
+                        [ Block 1 0 True (LinkContent { label = "A", url = "https://a.example" })
+                        , Block 2 1 True (LinkContent { label = "B", url = "https://b.example" })
+                        ]
+                in
+                moveBlock 1 (-1) blocks
+                    |> List.map .id
+                    |> Expect.equal [ 1, 2 ]
         ]

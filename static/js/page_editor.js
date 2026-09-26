@@ -4553,7 +4553,44 @@ function _Http_track(router, xhr, tracker)
 			size: event.lengthComputable ? $elm$core$Maybe$Just(event.total) : $elm$core$Maybe$Nothing
 		}))));
 	});
-}var $elm$core$Basics$EQ = {$: 'EQ'};
+}
+
+
+var _Bitwise_and = F2(function(a, b)
+{
+	return a & b;
+});
+
+var _Bitwise_or = F2(function(a, b)
+{
+	return a | b;
+});
+
+var _Bitwise_xor = F2(function(a, b)
+{
+	return a ^ b;
+});
+
+function _Bitwise_complement(a)
+{
+	return ~a;
+};
+
+var _Bitwise_shiftLeftBy = F2(function(offset, a)
+{
+	return a << offset;
+});
+
+var _Bitwise_shiftRightBy = F2(function(offset, a)
+{
+	return a >> offset;
+});
+
+var _Bitwise_shiftRightZfBy = F2(function(offset, a)
+{
+	return a >>> offset;
+});
+var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$List$cons = _List_cons;
@@ -6481,7 +6518,221 @@ var $elm$core$Maybe$map = F2(
 			return $elm$core$Maybe$Nothing;
 		}
 	});
+var $elm$core$Basics$ge = _Utils_ge;
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $elm$core$Array$fromListHelp = F3(
+	function (list, nodeList, nodeListSize) {
+		fromListHelp:
+		while (true) {
+			var _v0 = A2($elm$core$Elm$JsArray$initializeFromList, $elm$core$Array$branchFactor, list);
+			var jsArray = _v0.a;
+			var remainingItems = _v0.b;
+			if (_Utils_cmp(
+				$elm$core$Elm$JsArray$length(jsArray),
+				$elm$core$Array$branchFactor) < 0) {
+				return A2(
+					$elm$core$Array$builderToArray,
+					true,
+					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
+			} else {
+				var $temp$list = remainingItems,
+					$temp$nodeList = A2(
+					$elm$core$List$cons,
+					$elm$core$Array$Leaf(jsArray),
+					nodeList),
+					$temp$nodeListSize = nodeListSize + 1;
+				list = $temp$list;
+				nodeList = $temp$nodeList;
+				nodeListSize = $temp$nodeListSize;
+				continue fromListHelp;
+			}
+		}
+	});
+var $elm$core$Array$fromList = function (list) {
+	if (!list.b) {
+		return $elm$core$Array$empty;
+	} else {
+		return A3($elm$core$Array$fromListHelp, list, _List_Nil, 0);
+	}
+};
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
+var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
+var $elm$core$Array$getHelp = F3(
+	function (shift, index, tree) {
+		getHelp:
+		while (true) {
+			var pos = $elm$core$Array$bitMask & (index >>> shift);
+			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (_v0.$ === 'SubTree') {
+				var subTree = _v0.a;
+				var $temp$shift = shift - $elm$core$Array$shiftStep,
+					$temp$index = index,
+					$temp$tree = subTree;
+				shift = $temp$shift;
+				index = $temp$index;
+				tree = $temp$tree;
+				continue getHelp;
+			} else {
+				var values = _v0.a;
+				return A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, values);
+			}
+		}
+	});
+var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
+var $elm$core$Array$tailIndex = function (len) {
+	return (len >>> 5) << 5;
+};
+var $elm$core$Array$get = F2(
+	function (index, _v0) {
+		var len = _v0.a;
+		var startShift = _v0.b;
+		var tree = _v0.c;
+		var tail = _v0.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? $elm$core$Maybe$Nothing : ((_Utils_cmp(
+			index,
+			$elm$core$Array$tailIndex(len)) > -1) ? $elm$core$Maybe$Just(
+			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
+			A3($elm$core$Array$getHelp, startShift, index, tree)));
+	});
+var $elm$core$Elm$JsArray$unsafeSet = _JsArray_unsafeSet;
+var $elm$core$Array$setHelp = F4(
+	function (shift, index, value, tree) {
+		var pos = $elm$core$Array$bitMask & (index >>> shift);
+		var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+		if (_v0.$ === 'SubTree') {
+			var subTree = _v0.a;
+			var newSub = A4($elm$core$Array$setHelp, shift - $elm$core$Array$shiftStep, index, value, subTree);
+			return A3(
+				$elm$core$Elm$JsArray$unsafeSet,
+				pos,
+				$elm$core$Array$SubTree(newSub),
+				tree);
+		} else {
+			var values = _v0.a;
+			var newLeaf = A3($elm$core$Elm$JsArray$unsafeSet, $elm$core$Array$bitMask & index, value, values);
+			return A3(
+				$elm$core$Elm$JsArray$unsafeSet,
+				pos,
+				$elm$core$Array$Leaf(newLeaf),
+				tree);
+		}
+	});
+var $elm$core$Array$set = F3(
+	function (index, value, array) {
+		var len = array.a;
+		var startShift = array.b;
+		var tree = array.c;
+		var tail = array.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? array : ((_Utils_cmp(
+			index,
+			$elm$core$Array$tailIndex(len)) > -1) ? A4(
+			$elm$core$Array$Array_elm_builtin,
+			len,
+			startShift,
+			tree,
+			A3($elm$core$Elm$JsArray$unsafeSet, $elm$core$Array$bitMask & index, value, tail)) : A4(
+			$elm$core$Array$Array_elm_builtin,
+			len,
+			startShift,
+			A4($elm$core$Array$setHelp, startShift, index, value, tree),
+			tail));
+	});
+var $author$project$Main$swapAt = F3(
+	function (i, j, list) {
+		var array = $elm$core$Array$fromList(list);
+		var vi = A2($elm$core$Array$get, i, array);
+		var vj = A2($elm$core$Array$get, j, array);
+		var _v0 = _Utils_Tuple2(vi, vj);
+		if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
+			var a = _v0.a.a;
+			var b = _v0.b.a;
+			return $elm$core$Array$toList(
+				A3(
+					$elm$core$Array$set,
+					j,
+					a,
+					A3($elm$core$Array$set, i, b, array)));
+		} else {
+			return list;
+		}
+	});
+var $author$project$Main$moveBlock = F3(
+	function (blockId, delta, blocks) {
+		var ids = A2(
+			$elm$core$List$map,
+			function ($) {
+				return $.id;
+			},
+			blocks);
+		var currentIndex = A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v1, found) {
+					var index = _v1.a;
+					var id = _v1.b;
+					return _Utils_eq(id, blockId) ? $elm$core$Maybe$Just(index) : found;
+				}),
+			$elm$core$Maybe$Nothing,
+			A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, ids));
+		var newIndex = A2(
+			$elm$core$Maybe$map,
+			function (i) {
+				return i + delta;
+			},
+			currentIndex);
+		var _v0 = _Utils_Tuple2(currentIndex, newIndex);
+		if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
+			var from = _v0.a.a;
+			var to = _v0.b.a;
+			return ((to < 0) || (_Utils_cmp(
+				to,
+				$elm$core$List$length(blocks)) > -1)) ? blocks : A3($author$project$Main$swapAt, from, to, blocks);
+		} else {
+			return blocks;
+		}
+	});
 var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$Main$Reordered = F2(
+	function (a, b) {
+		return {$: 'Reordered', a: a, b: b};
+	});
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $author$project$Main$reorderBlocks = F2(
+	function (flags, blocks) {
+		return $elm$http$Http$request(
+			{
+				body: $elm$http$Http$jsonBody(
+					$elm$json$Json$Encode$object(
+						_List_fromArray(
+							[
+								_Utils_Tuple2(
+								'block_ids',
+								A2(
+									$elm$json$Json$Encode$list,
+									function (b) {
+										return $elm$json$Json$Encode$int(b.id);
+									},
+									blocks))
+							]))),
+				expect: A2(
+					$elm$http$Http$expectJson,
+					$author$project$Main$Reordered(blocks),
+					$author$project$Main$pageDecoder),
+				headers: _List_fromArray(
+					[
+						A2($elm$http$Http$header, 'X-CSRFToken', flags.csrfToken)
+					]),
+				method: 'POST',
+				timeout: $elm$core$Maybe$Nothing,
+				tracker: $elm$core$Maybe$Nothing,
+				url: flags.apiBase + ('pages/' + (flags.handle + '/blocks/reorder/'))
+			});
+	});
 var $author$project$Main$BlockSaved = F2(
 	function (a, b) {
 		return {$: 'BlockSaved', a: a, b: b};
@@ -6738,7 +6989,7 @@ var $author$project$Main$update = F2(
 								model.page)
 						}),
 					A2($author$project$Main$deleteBlock, model.flags, blockId));
-			default:
+			case 'BlockDeleted':
 				if (msg.b.$ === 'Ok') {
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				} else {
@@ -6747,6 +6998,54 @@ var $author$project$Main$update = F2(
 							model,
 							{
 								error: $elm$core$Maybe$Just('Couldn\u0027t delete that block. Reload to see the real state.')
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
+			case 'MoveBlock':
+				var blockId = msg.a;
+				var delta = msg.b;
+				var _v3 = model.page;
+				if (_v3.$ === 'Just') {
+					var p = _v3.a;
+					var reordered = A3($author$project$Main$moveBlock, blockId, delta, p.blocks);
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								page: $elm$core$Maybe$Just(
+									_Utils_update(
+										p,
+										{blocks: reordered}))
+							}),
+						A2($author$project$Main$reorderBlocks, model.flags, reordered));
+				} else {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				}
+			default:
+				if (msg.b.$ === 'Ok') {
+					var pageData = msg.b.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								page: $elm$core$Maybe$Just(pageData)
+							}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					var previousBlocks = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just('Couldn\u0027t reorder blocks. Reverted.'),
+								page: A2(
+									$elm$core$Maybe$map,
+									function (p) {
+										return _Utils_update(
+											p,
+											{blocks: previousBlocks});
+									},
+									model.page)
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
@@ -6865,6 +7164,52 @@ var $author$project$Main$deleteButton = function (block) {
 			]));
 };
 var $elm$html$Html$input = _VirtualDom_node('input');
+var $author$project$Main$MoveBlock = F2(
+	function (a, b) {
+		return {$: 'MoveBlock', a: a, b: b};
+	});
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $author$project$Main$moveButtons = function (block) {
+	return _List_fromArray(
+		[
+			A2(
+			$elm$html$Html$button,
+			_List_fromArray(
+				[
+					$elm$html$Html$Events$onClick(
+					A2($author$project$Main$MoveBlock, block.id, -1))
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$i,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('fa-solid fa-arrow-up')
+						]),
+					_List_Nil)
+				])),
+			A2(
+			$elm$html$Html$button,
+			_List_fromArray(
+				[
+					$elm$html$Html$Events$onClick(
+					A2($author$project$Main$MoveBlock, block.id, 1))
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$i,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('fa-solid fa-arrow-down')
+						]),
+					_List_Nil)
+				]))
+		]);
+};
 var $elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
 };
@@ -6927,56 +7272,58 @@ var $author$project$Main$viewBlockEditor = function (block) {
 					[
 						$elm$html$Html$Attributes$class('block-editor')
 					]),
-				_List_fromArray(
-					[
-						A2(
-						$elm$html$Html$input,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$value(link.label),
-								$elm$html$Html$Events$onInput(
-								function (v) {
-									return A2(
-										$author$project$Main$EditBlock,
-										block.id,
-										A4(
-											$author$project$Main$updateBlockContent,
-											function (l) {
-												return _Utils_update(
-													l,
-													{label: v});
-											},
-											$elm$core$Basics$identity,
-											$elm$core$Basics$identity,
-											block.content));
-								})
-							]),
-						_List_Nil),
-						A2(
-						$elm$html$Html$input,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$value(link.url),
-								$elm$html$Html$Events$onInput(
-								function (v) {
-									return A2(
-										$author$project$Main$EditBlock,
-										block.id,
-										A4(
-											$author$project$Main$updateBlockContent,
-											function (l) {
-												return _Utils_update(
-													l,
-													{url: v});
-											},
-											$elm$core$Basics$identity,
-											$elm$core$Basics$identity,
-											block.content));
-								})
-							]),
-						_List_Nil),
-						$author$project$Main$deleteButton(block)
-					]));
+				_Utils_ap(
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$input,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$value(link.label),
+									$elm$html$Html$Events$onInput(
+									function (v) {
+										return A2(
+											$author$project$Main$EditBlock,
+											block.id,
+											A4(
+												$author$project$Main$updateBlockContent,
+												function (l) {
+													return _Utils_update(
+														l,
+														{label: v});
+												},
+												$elm$core$Basics$identity,
+												$elm$core$Basics$identity,
+												block.content));
+									})
+								]),
+							_List_Nil),
+							A2(
+							$elm$html$Html$input,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$value(link.url),
+									$elm$html$Html$Events$onInput(
+									function (v) {
+										return A2(
+											$author$project$Main$EditBlock,
+											block.id,
+											A4(
+												$author$project$Main$updateBlockContent,
+												function (l) {
+													return _Utils_update(
+														l,
+														{url: v});
+												},
+												$elm$core$Basics$identity,
+												$elm$core$Basics$identity,
+												block.content));
+									})
+								]),
+							_List_Nil),
+							$author$project$Main$deleteButton(block)
+						]),
+					$author$project$Main$moveButtons(block)));
 		case 'HeaderContent':
 			var header = _v0.a;
 			return A2(
@@ -6985,56 +7332,58 @@ var $author$project$Main$viewBlockEditor = function (block) {
 					[
 						$elm$html$Html$Attributes$class('block-editor')
 					]),
-				_List_fromArray(
-					[
-						A2(
-						$elm$html$Html$input,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$value(header.displayName),
-								$elm$html$Html$Events$onInput(
-								function (v) {
-									return A2(
-										$author$project$Main$EditBlock,
-										block.id,
-										A4(
-											$author$project$Main$updateBlockContent,
-											$elm$core$Basics$identity,
-											function (h) {
-												return _Utils_update(
-													h,
-													{displayName: v});
-											},
-											$elm$core$Basics$identity,
-											block.content));
-								})
-							]),
-						_List_Nil),
-						A2(
-						$elm$html$Html$textarea,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$value(header.bio),
-								$elm$html$Html$Events$onInput(
-								function (v) {
-									return A2(
-										$author$project$Main$EditBlock,
-										block.id,
-										A4(
-											$author$project$Main$updateBlockContent,
-											$elm$core$Basics$identity,
-											function (h) {
-												return _Utils_update(
-													h,
-													{bio: v});
-											},
-											$elm$core$Basics$identity,
-											block.content));
-								})
-							]),
-						_List_Nil),
-						$author$project$Main$deleteButton(block)
-					]));
+				_Utils_ap(
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$input,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$value(header.displayName),
+									$elm$html$Html$Events$onInput(
+									function (v) {
+										return A2(
+											$author$project$Main$EditBlock,
+											block.id,
+											A4(
+												$author$project$Main$updateBlockContent,
+												$elm$core$Basics$identity,
+												function (h) {
+													return _Utils_update(
+														h,
+														{displayName: v});
+												},
+												$elm$core$Basics$identity,
+												block.content));
+									})
+								]),
+							_List_Nil),
+							A2(
+							$elm$html$Html$textarea,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$value(header.bio),
+									$elm$html$Html$Events$onInput(
+									function (v) {
+										return A2(
+											$author$project$Main$EditBlock,
+											block.id,
+											A4(
+												$author$project$Main$updateBlockContent,
+												$elm$core$Basics$identity,
+												function (h) {
+													return _Utils_update(
+														h,
+														{bio: v});
+												},
+												$elm$core$Basics$identity,
+												block.content));
+									})
+								]),
+							_List_Nil),
+							$author$project$Main$deleteButton(block)
+						]),
+					$author$project$Main$moveButtons(block)));
 		default:
 			var social = _v0.a;
 			return A2(
@@ -7126,40 +7475,42 @@ var $author$project$Main$viewBlockEditor = function (block) {
 										]));
 							}),
 						social.icons),
-					_List_fromArray(
-						[
-							A2(
-							$elm$html$Html$button,
-							_List_fromArray(
-								[
-									$elm$html$Html$Events$onClick(
-									A2(
-										$author$project$Main$EditBlock,
-										block.id,
-										A4(
-											$author$project$Main$updateBlockContent,
-											$elm$core$Basics$identity,
-											$elm$core$Basics$identity,
-											function (s) {
-												return _Utils_update(
-													s,
-													{
-														icons: _Utils_ap(
-															s.icons,
-															_List_fromArray(
-																[
-																	A2($author$project$Main$SocialIcon, '', '')
-																]))
-													});
-											},
-											block.content)))
-								]),
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Add icon')
-								])),
-							$author$project$Main$deleteButton(block)
-						])));
+					_Utils_ap(
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$button,
+								_List_fromArray(
+									[
+										$elm$html$Html$Events$onClick(
+										A2(
+											$author$project$Main$EditBlock,
+											block.id,
+											A4(
+												$author$project$Main$updateBlockContent,
+												$elm$core$Basics$identity,
+												$elm$core$Basics$identity,
+												function (s) {
+													return _Utils_update(
+														s,
+														{
+															icons: _Utils_ap(
+																s.icons,
+																_List_fromArray(
+																	[
+																		A2($author$project$Main$SocialIcon, '', '')
+																	]))
+														});
+												},
+												block.content)))
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Add icon')
+									])),
+								$author$project$Main$deleteButton(block)
+							]),
+						$author$project$Main$moveButtons(block))));
 	}
 };
 var $author$project$Main$SetDevice = function (a) {
