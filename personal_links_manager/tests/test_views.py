@@ -99,8 +99,11 @@ def test_check_handle_availability_invalid_format(client, user):
 
 
 def test_check_handle_availability_requires_login(client):
+    # DRF returns a JSON 403 for a denied permission rather than Django's
+    # redirect-to-login -- this endpoint is called via fetch(), not page
+    # navigation, so a redirect would be useless to the caller anyway.
     response = client.get(reverse("check_handle_availability"), {"handle": "anything"})
-    assert response.status_code == 302
+    assert response.status_code == 403
 
 
 def test_admin_dashboard_data_redirects_anonymous_to_admin_login(client):

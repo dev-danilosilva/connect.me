@@ -2,7 +2,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_POST
 
 from .forms import CreatePageForm
 from .stats import compute_dashboard_stats
@@ -38,20 +38,6 @@ def create_page(request):
         "open_create_modal": True,
     }
     return render(request, "personal_links_manager/dashboard.html", context)
-
-
-@login_required
-@require_GET
-def check_handle_availability(request):
-    handle = request.GET.get("handle", "")
-    form = CreatePageForm(data={"handle": handle})
-
-    if form.is_valid():
-        return JsonResponse({"status": "available", "message": "This handle is available."})
-
-    message = form.errors["handle"][0]
-    status = "taken" if message == "This handle is already taken." else "invalid"
-    return JsonResponse({"status": status, "message": message})
 
 
 @staff_member_required

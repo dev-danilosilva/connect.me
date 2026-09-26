@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from .api_views import HandleAvailabilityAPIView
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -8,7 +9,7 @@ urlpatterns = [
     path("dashboard/pages/create/", views.create_page, name="create_page"),
     path(
         "dashboard/handle-check/",
-        views.check_handle_availability,
+        HandleAvailabilityAPIView.as_view(),
         name="check_handle_availability",
     ),
 ]

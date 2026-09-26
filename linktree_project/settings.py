@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'personal_links_manager',
+    'rest_framework',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -219,4 +220,14 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
