@@ -1,8 +1,11 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.http import Http404
+from django.middleware.csrf import get_token
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import CreatePageForm
+from .models import LinkPage
 
 
 def home(request):
@@ -27,7 +30,7 @@ def create_page(request):
         page = form.save(commit=False)
         page.owner = request.user
         page.save()
-        return redirect("dashboard")
+        return redirect("page_editor", handle=page.handle)
 
     context = {
         "pages": request.user.pages.all(),
@@ -35,3 +38,20 @@ def create_page(request):
         "open_create_modal": True,
     }
     return render(request, "personal_links_manager/dashboard.html", context)
+
+
+@login_required
+def page_editor(request, handle):
+    page = get_object_or_404(LinkPage, handle=handle)
+    if page.owner != request.user:
+        raise Http404
+    context = {
+        "elm_flags": {
+            "pageId": page.id,
+            "handle": page.handle,
+            "title": page.title,
+            "csrfToken": get_token(request),
+            "apiBase": "/api/",
+        },
+    }
+    return render(request, "personal_links_manager/page_editor.html", context)

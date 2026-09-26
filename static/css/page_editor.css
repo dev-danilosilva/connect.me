@@ -1,0 +1,18 @@
+#elm-app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.editor-preview-pane {
+  flex: 1 1 60%;
+  background: #f4f4f7;
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.editor-controls-pane {
+  flex: 1 1 40%;
+  padding: 2rem;
+  overflow-y: auto;
+}

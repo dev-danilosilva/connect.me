@@ -50,6 +50,7 @@ def test_create_page_persists_scoped_to_owner(client, user):
     page = LinkPage.objects.get(handle="my-new-page")
     assert page.owner == user
     assert page.title == "My New Page"
+    assert response.url == reverse("page_editor", args=["my-new-page"])
 
 
 def test_create_page_rejects_duplicate_handle(client, user):
@@ -134,3 +135,30 @@ def test_admin_dashboard_data_returns_stats_for_staff_user(client, user):
     # user, other, staff -> 3 users; 2 link pages created above.
     assert data["total_users"] == 3
     assert data["total_pages"] == 2
+
+
+def test_page_editor_renders_for_owner(client, user):
+    LinkPage.objects.create(owner=user, handle="editable-page")
+    client.force_login(user)
+
+    response = client.get(reverse("page_editor", args=["editable-page"]))
+
+    assert response.status_code == 200
+    assert 'id="elm-app"' in response.content.decode()
+
+
+def test_page_editor_404s_for_non_owner(client, user):
+    other = User.objects.create_user(email="other4@example.com", password="password123")
+    LinkPage.objects.create(owner=other, handle="not-yours")
+    client.force_login(user)
+
+    response = client.get(reverse("page_editor", args=["not-yours"]))
+
+    assert response.status_code == 404
+
+
+def test_page_editor_requires_login(client, user):
+    LinkPage.objects.create(owner=user, handle="needs-login")
+    response = client.get(reverse("page_editor", args=["needs-login"]))
+    assert response.status_code == 302
+    assert response.url.startswith(reverse("login"))
