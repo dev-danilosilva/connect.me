@@ -139,3 +139,43 @@ def test_patch_block_rejects_non_owner(client, page):
     )
 
     assert response.status_code == 403
+
+
+def test_reorder_updates_block_positions(client, owner, page):
+    first = Block.objects.create(
+        page=page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "A", "url": "https://a.example"},
+    )
+    second = Block.objects.create(
+        page=page, block_type=Block.BlockType.LINK, position=1,
+        data={"label": "B", "url": "https://b.example"},
+    )
+    client.force_login(owner)
+
+    response = client.post(
+        reverse("api_block_reorder", args=[page.handle]),
+        {"block_ids": [second.id, first.id]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert second.position == 0
+    assert first.position == 1
+
+
+def test_reorder_rejects_mismatched_block_ids(client, owner, page):
+    Block.objects.create(
+        page=page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "A", "url": "https://a.example"},
+    )
+    client.force_login(owner)
+
+    response = client.post(
+        reverse("api_block_reorder", args=[page.handle]),
+        {"block_ids": [9999]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400

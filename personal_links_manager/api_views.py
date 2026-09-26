@@ -72,3 +72,27 @@ class BlockDetailAPIView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, gene
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
+
+
+class BlockReorderAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsPageOwner]
+
+    def post(self, request, handle):
+        page = get_object_or_404(LinkPage, handle=handle)
+        self.check_object_permissions(request, page)
+
+        block_ids = request.data.get("block_ids", [])
+        blocks_by_id = {block.id: block for block in page.blocks.all()}
+
+        if set(block_ids) != set(blocks_by_id):
+            raise ValidationError(
+                {"block_ids": "Must include exactly the page's current block ids."}
+            )
+
+        for position, block_id in enumerate(block_ids):
+            block = blocks_by_id[block_id]
+            if block.position != position:
+                block.position = position
+                block.save(update_fields=["position"])
+
+        return Response(LinkPageSerializer(page).data)
