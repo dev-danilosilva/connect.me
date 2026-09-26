@@ -91,3 +91,51 @@ def test_create_block_rejects_non_owner(client, page):
     )
 
     assert response.status_code == 403
+
+
+def test_patch_block_updates_data(client, owner, page):
+    block = Block.objects.create(
+        page=page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "Old", "url": "https://old.example"},
+    )
+    client.force_login(owner)
+
+    response = client.patch(
+        reverse("api_block_detail", args=[page.handle, block.id]),
+        {"data": {"label": "New", "url": "https://new.example"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    block.refresh_from_db()
+    assert block.data == {"label": "New", "url": "https://new.example"}
+
+
+def test_delete_block_removes_it(client, owner, page):
+    block = Block.objects.create(
+        page=page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "Bye", "url": "https://bye.example"},
+    )
+    client.force_login(owner)
+
+    response = client.delete(reverse("api_block_detail", args=[page.handle, block.id]))
+
+    assert response.status_code == 204
+    assert not Block.objects.filter(id=block.id).exists()
+
+
+def test_patch_block_rejects_non_owner(client, page):
+    block = Block.objects.create(
+        page=page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "X", "url": "https://x.example"},
+    )
+    other = User.objects.create_user(email="other3@example.com", password="password123")
+    client.force_login(other)
+
+    response = client.patch(
+        reverse("api_block_detail", args=[page.handle, block.id]),
+        {"data": {"label": "Hacked", "url": "https://hacked.example"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 403

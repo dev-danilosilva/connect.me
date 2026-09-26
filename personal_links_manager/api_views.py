@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import generics
+from rest_framework import generics, mixins
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -57,3 +57,18 @@ class BlockCreateAPIView(generics.CreateAPIView):
         if block_type == Block.BlockType.HEADER and has_header:
             raise ValidationError({"block_type": "This page already has a header block."})
         serializer.save(page=page, position=page.blocks.count())
+
+
+class BlockDetailAPIView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, generics.GenericAPIView):
+    serializer_class = BlockSerializer
+    permission_classes = [IsAuthenticated, IsPageOwner]
+    lookup_url_kwarg = "block_id"
+
+    def get_queryset(self):
+        return Block.objects.filter(page__handle=self.kwargs["handle"])
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
