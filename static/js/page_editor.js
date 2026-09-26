@@ -6413,6 +6413,44 @@ var $author$project$Main$createBlock = F2(
 				url: flags.apiBase + ('pages/' + (flags.handle + '/blocks/'))
 			});
 	});
+var $author$project$Main$BlockDeleted = F2(
+	function (a, b) {
+		return {$: 'BlockDeleted', a: a, b: b};
+	});
+var $elm$http$Http$expectBytesResponse = F2(
+	function (toMsg, toResult) {
+		return A3(
+			_Http_expect,
+			'arraybuffer',
+			_Http_toDataView,
+			A2($elm$core$Basics$composeR, toResult, toMsg));
+	});
+var $elm$http$Http$expectWhatever = function (toMsg) {
+	return A2(
+		$elm$http$Http$expectBytesResponse,
+		toMsg,
+		$elm$http$Http$resolve(
+			function (_v0) {
+				return $elm$core$Result$Ok(_Utils_Tuple0);
+			}));
+};
+var $author$project$Main$deleteBlock = F2(
+	function (flags, blockId) {
+		return $elm$http$Http$request(
+			{
+				body: $elm$http$Http$emptyBody,
+				expect: $elm$http$Http$expectWhatever(
+					$author$project$Main$BlockDeleted(blockId)),
+				headers: _List_fromArray(
+					[
+						A2($elm$http$Http$header, 'X-CSRFToken', flags.csrfToken)
+					]),
+				method: 'DELETE',
+				timeout: $elm$core$Maybe$Nothing,
+				tracker: $elm$core$Maybe$Nothing,
+				url: flags.apiBase + ('pages/' + (flags.handle + ('/blocks/' + ($elm$core$String$fromInt(blockId) + '/'))))
+			});
+	});
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
 		return A3(
@@ -6443,6 +6481,7 @@ var $elm$core$Maybe$map = F2(
 			return $elm$core$Maybe$Nothing;
 		}
 	});
+var $elm$core$Basics$neq = _Utils_notEqual;
 var $author$project$Main$BlockSaved = F2(
 	function (a, b) {
 		return {$: 'BlockSaved', a: a, b: b};
@@ -6664,7 +6703,7 @@ var $author$project$Main$update = F2(
 				} else {
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				}
-			default:
+			case 'BlockSaved':
 				if (msg.b.$ === 'Ok') {
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				} else {
@@ -6673,6 +6712,41 @@ var $author$project$Main$update = F2(
 							model,
 							{
 								error: $elm$core$Maybe$Just('Couldn\u0027t save a change. Reload and try again.')
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
+			case 'DeleteBlock':
+				var blockId = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							page: A2(
+								$elm$core$Maybe$map,
+								function (p) {
+									return _Utils_update(
+										p,
+										{
+											blocks: A2(
+												$elm$core$List$filter,
+												function (b) {
+													return !_Utils_eq(b.id, blockId);
+												},
+												p.blocks)
+										});
+								},
+								model.page)
+						}),
+					A2($author$project$Main$deleteBlock, model.flags, blockId));
+			default:
+				if (msg.b.$ === 'Ok') {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				} else {
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just('Couldn\u0027t delete that block. Reload to see the real state.')
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
@@ -6766,6 +6840,30 @@ var $author$project$Main$EditBlock = F2(
 	function (a, b) {
 		return {$: 'EditBlock', a: a, b: b};
 	});
+var $author$project$Main$DeleteBlock = function (a) {
+	return {$: 'DeleteBlock', a: a};
+};
+var $elm$html$Html$i = _VirtualDom_node('i');
+var $author$project$Main$deleteButton = function (block) {
+	return A2(
+		$elm$html$Html$button,
+		_List_fromArray(
+			[
+				$elm$html$Html$Events$onClick(
+				$author$project$Main$DeleteBlock(block.id)),
+				$elm$html$Html$Attributes$class('delete-block-button')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$i,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('fa-solid fa-trash')
+					]),
+				_List_Nil)
+			]));
+};
 var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
@@ -6876,7 +6974,8 @@ var $author$project$Main$viewBlockEditor = function (block) {
 											block.content));
 								})
 							]),
-						_List_Nil)
+						_List_Nil),
+						$author$project$Main$deleteButton(block)
 					]));
 		case 'HeaderContent':
 			var header = _v0.a;
@@ -6933,7 +7032,8 @@ var $author$project$Main$viewBlockEditor = function (block) {
 											block.content));
 								})
 							]),
-						_List_Nil)
+						_List_Nil),
+						$author$project$Main$deleteButton(block)
 					]));
 		default:
 			var social = _v0.a;
@@ -7057,7 +7157,8 @@ var $author$project$Main$viewBlockEditor = function (block) {
 							_List_fromArray(
 								[
 									$elm$html$Html$text('Add icon')
-								]))
+								])),
+							$author$project$Main$deleteButton(block)
 						])));
 	}
 };
@@ -7198,7 +7299,6 @@ var $author$project$Main$deviceWidth = function (device) {
 };
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
-var $elm$html$Html$i = _VirtualDom_node('i');
 var $author$project$Main$viewBlockPreview = function (block) {
 	var _v0 = block.content;
 	switch (_v0.$) {

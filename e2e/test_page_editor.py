@@ -93,3 +93,23 @@ def test_editing_a_link_label_updates_the_preview_without_reload(
     page.wait_for_timeout(700)
     page.reload()
     expect(page.locator(".preview-block-link")).to_contain_text("Updated label")
+
+
+def test_deleting_a_block_removes_it_from_the_preview(page, live_server, demo_user, demo_page):
+    from personal_links_manager.models import Block
+
+    Block.objects.create(
+        page=demo_page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "Delete me", "url": "https://example.com"},
+    )
+
+    page.goto(f"{live_server.url}/login/")
+    page.fill("#login-email", demo_user.email)
+    page.fill("#login-password", "password123")
+    page.click("#login-submit")
+    page.wait_for_url("**/dashboard/")
+
+    page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
+    page.click(".delete-block-button")
+
+    expect(page.locator(".preview-block-link")).to_have_count(0)

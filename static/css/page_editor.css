@@ -72,3 +72,11 @@
   display: flex;
   gap: 0.5rem;
 }
+
+.delete-block-button {
+  align-self: flex-end;
+  background: none;
+  border: none;
+  color: #c0392b;
+  cursor: pointer;
+}

@@ -233,6 +233,8 @@ type Msg
     | EditBlock Int BlockContent
     | Debounced Int
     | BlockSaved Int (Result Http.Error Block)
+    | DeleteBlock Int
+    | BlockDeleted Int (Result Http.Error ())
 
 
 fetchPage : Flags -> Cmd Msg
@@ -298,6 +300,19 @@ saveBlock flags block =
         , url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/blocks/" ++ String.fromInt block.id ++ "/"
         , body = Http.jsonBody (Encode.object [ ( "data", contentEncoder block.content ) ])
         , expect = Http.expectJson (BlockSaved block.id) blockDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+deleteBlock : Flags -> Int -> Cmd Msg
+deleteBlock flags blockId =
+    Http.request
+        { method = "DELETE"
+        , headers = [ Http.header "X-CSRFToken" flags.csrfToken ]
+        , url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/blocks/" ++ String.fromInt blockId ++ "/"
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever (BlockDeleted blockId)
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -390,6 +405,17 @@ update msg model =
         BlockSaved _ (Err _) ->
             ( { model | error = Just "Couldn't save a change. Reload and try again." }, Cmd.none )
 
+        DeleteBlock blockId ->
+            ( { model | page = Maybe.map (\p -> { p | blocks = List.filter (\b -> b.id /= blockId) p.blocks }) model.page }
+            , deleteBlock model.flags blockId
+            )
+
+        BlockDeleted _ (Ok ()) ->
+            ( model, Cmd.none )
+
+        BlockDeleted _ (Err _) ->
+            ( { model | error = Just "Couldn't delete that block. Reload to see the real state." }, Cmd.none )
+
 
 viewDeviceButton : Device -> Device -> Html Msg
 viewDeviceButton current device =
@@ -430,6 +456,12 @@ viewBlockPreview block =
                 (List.map (\icon -> Html.i [ class ("fa-brands fa-" ++ icon.platform) ] []) icons)
 
 
+deleteButton : Block -> Html Msg
+deleteButton block =
+    button [ onClick (DeleteBlock block.id), class "delete-block-button" ]
+        [ Html.i [ class "fa-solid fa-trash" ] [] ]
+
+
 viewBlockEditor : Block -> Html Msg
 viewBlockEditor block =
     case block.content of
@@ -447,6 +479,7 @@ viewBlockEditor block =
                         (\v -> EditBlock block.id (updateBlockContent (\l -> { l | url = v }) identity identity block.content))
                     ]
                     []
+                , deleteButton block
                 ]
 
         HeaderContent header ->
@@ -463,6 +496,7 @@ viewBlockEditor block =
                         (\v -> EditBlock block.id (updateBlockContent identity (\h -> { h | bio = v }) identity block.content))
                     ]
                     []
+                , deleteButton block
                 ]
 
         SocialIconsContent social ->
@@ -511,6 +545,7 @@ viewBlockEditor block =
                                 )
                             ]
                             [ text "Add icon" ]
+                       , deleteButton block
                        ]
                 )
 
