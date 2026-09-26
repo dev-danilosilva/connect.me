@@ -44,16 +44,18 @@ class RegisterForm(forms.Form):
         email = cleaned_data.get("email")
         password = cleaned_data.get("password")
 
-        # Any failure reason (email taken, weak password) surfaces as the
-        # same generic banner, mirroring Api.elm's registerErrorMessage.
+        # Kept generic (non-field) so a failed attempt never confirms
+        # whether an email is already registered.
         if email and User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError(GENERIC_REGISTER_ERROR, code="registration_failed")
 
+        # Password strength failures don't leak account-existence info,
+        # so these can safely be specific about which rule failed.
         if password:
             try:
                 validate_password(password)
-            except DjangoValidationError:
-                raise forms.ValidationError(GENERIC_REGISTER_ERROR, code="registration_failed")
+            except DjangoValidationError as exc:
+                self.add_error("password", exc)
 
         return cleaned_data
 

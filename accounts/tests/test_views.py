@@ -103,13 +103,13 @@ def test_registration_with_taken_email_returns_200_with_generic_error(client, ex
     assert User.objects.filter(email="test@example.com").count() == 1
 
 
-def test_registration_with_weak_password_returns_200_with_generic_error(client):
+def test_registration_with_weak_password_returns_200_with_specific_error(client):
     response = client.post(
         reverse("register"),
         {"display_name": "Jane Doe", "email": "jane@example.com", "password": "password123"},
     )
     assert response.status_code == 200
-    assert GENERIC_REGISTER_ERROR in response.content.decode()
+    assert "This password is too common." in response.content.decode()
     assert not User.objects.filter(email="jane@example.com").exists()
 
 

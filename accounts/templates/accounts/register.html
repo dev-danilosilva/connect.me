@@ -88,12 +88,12 @@
               {% include "icons/eye.html" %}
             </button>
           </div>
-          {% if form.password.errors %}
+          {% for error in form.password.errors %}
             <div class="handle-status handle-status-taken">
               {% include "icons/close.html" %}
-              <span>{{ form.password.errors.0 }}</span>
+              <span>{{ error }}</span>
             </div>
-          {% endif %}
+          {% endfor %}
         </div>
 
         {% if form.non_field_errors %}

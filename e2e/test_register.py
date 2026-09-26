@@ -30,6 +30,18 @@ def test_registration_with_taken_email_shows_generic_error(page, live_server, de
     )
 
 
+def test_registration_with_weak_password_shows_specific_error(page, live_server):
+    page.goto(live_server.url + "/register/")
+    page.fill("#register-name", "Jane Doe")
+    page.fill("#register-email", "jane@example.com")
+    page.fill("#register-password", "password123")
+    page.click("button:text-is('Register')")
+
+    expect(page.locator(".handle-status-taken")).to_contain_text(
+        "This password is too common."
+    )
+
+
 def test_login_page_links_to_register_and_back(page, live_server):
     page.goto(live_server.url + "/login/")
     page.click("a:text-is('Register')")

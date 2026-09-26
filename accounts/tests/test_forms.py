@@ -89,9 +89,10 @@ def test_register_form_rejects_duplicate_email_case_insensitively(existing_user)
     )
     assert not form.is_valid()
     assert form.non_field_errors() == [GENERIC_REGISTER_ERROR]
+    assert "email" not in form.errors
 
 
-def test_register_form_rejects_weak_password():
+def test_register_form_rejects_weak_password_with_specific_error():
     form = RegisterForm(
         data={
             "display_name": "Jane Doe",
@@ -100,7 +101,21 @@ def test_register_form_rejects_weak_password():
         }
     )
     assert not form.is_valid()
-    assert form.non_field_errors() == [GENERIC_REGISTER_ERROR]
+    assert "This password is too common." in form.errors["password"]
+    assert not form.non_field_errors()
+
+
+def test_register_form_reports_every_failed_password_rule():
+    form = RegisterForm(
+        data={
+            "display_name": "Jane Doe",
+            "email": "jane@example.com",
+            "password": "12345678",  # too common AND entirely numeric
+        }
+    )
+    assert not form.is_valid()
+    assert "This password is too common." in form.errors["password"]
+    assert "This password is entirely numeric." in form.errors["password"]
 
 
 def test_register_form_requires_all_fields():
