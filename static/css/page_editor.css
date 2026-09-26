@@ -47,3 +47,13 @@
   border-color: #333;
   font-weight: 600;
 }
+
+.add-block-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-block-row button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

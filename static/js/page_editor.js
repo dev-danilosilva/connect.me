@@ -6288,38 +6288,196 @@ var $author$project$Main$init = function (flagsJson) {
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $author$project$Main$BlockCreated = function (a) {
+	return {$: 'BlockCreated', a: a};
+};
+var $author$project$Main$blockTypeApiValue = function (blockType) {
+	switch (blockType.$) {
+		case 'LinkType':
+			return 'link';
+		case 'HeaderType':
+			return 'header';
+		default:
+			return 'social_icons';
+	}
+};
+var $elm$json$Json$Encode$list = F2(
+	function (func, entries) {
+		return _Json_wrap(
+			A3(
+				$elm$core$List$foldl,
+				_Json_addEntry(func),
+				_Json_emptyArray(_Utils_Tuple0),
+				entries));
+	});
+var $elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v0, obj) {
+					var k = _v0.a;
+					var v = _v0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
+};
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $author$project$Main$defaultData = F2(
+	function (blockType, pageTitle) {
+		switch (blockType.$) {
+			case 'LinkType':
+				return $elm$json$Json$Encode$object(
+					_List_fromArray(
+						[
+							_Utils_Tuple2(
+							'label',
+							$elm$json$Json$Encode$string('New link')),
+							_Utils_Tuple2(
+							'url',
+							$elm$json$Json$Encode$string('https://example.com'))
+						]));
+			case 'HeaderType':
+				return $elm$json$Json$Encode$object(
+					_List_fromArray(
+						[
+							_Utils_Tuple2(
+							'display_name',
+							$elm$json$Json$Encode$string(pageTitle)),
+							_Utils_Tuple2(
+							'bio',
+							$elm$json$Json$Encode$string('')),
+							_Utils_Tuple2(
+							'avatar_url',
+							$elm$json$Json$Encode$string(''))
+						]));
+			default:
+				return $elm$json$Json$Encode$object(
+					_List_fromArray(
+						[
+							_Utils_Tuple2(
+							'icons',
+							A2($elm$json$Json$Encode$list, $elm$core$Basics$identity, _List_Nil))
+						]));
+		}
+	});
+var $elm$http$Http$Header = F2(
+	function (a, b) {
+		return {$: 'Header', a: a, b: b};
+	});
+var $elm$http$Http$header = $elm$http$Http$Header;
+var $elm$http$Http$jsonBody = function (value) {
+	return A2(
+		_Http_pair,
+		'application/json',
+		A2($elm$json$Json$Encode$encode, 0, value));
+};
+var $author$project$Main$createBlock = F2(
+	function (flags, blockType) {
+		return $elm$http$Http$request(
+			{
+				body: $elm$http$Http$jsonBody(
+					$elm$json$Json$Encode$object(
+						_List_fromArray(
+							[
+								_Utils_Tuple2(
+								'block_type',
+								$elm$json$Json$Encode$string(
+									$author$project$Main$blockTypeApiValue(blockType))),
+								_Utils_Tuple2(
+								'data',
+								A2($author$project$Main$defaultData, blockType, flags.title))
+							]))),
+				expect: A2($elm$http$Http$expectJson, $author$project$Main$BlockCreated, $author$project$Main$blockDecoder),
+				headers: _List_fromArray(
+					[
+						A2($elm$http$Http$header, 'X-CSRFToken', flags.csrfToken)
+					]),
+				method: 'POST',
+				timeout: $elm$core$Maybe$Nothing,
+				tracker: $elm$core$Maybe$Nothing,
+				url: flags.apiBase + ('pages/' + (flags.handle + '/blocks/'))
+			});
+	});
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		if (msg.$ === 'PageLoaded') {
-			if (msg.a.$ === 'Ok') {
-				var pageData = msg.a.a;
+		switch (msg.$) {
+			case 'PageLoaded':
+				if (msg.a.$ === 'Ok') {
+					var pageData = msg.a.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								page: $elm$core$Maybe$Just(pageData)
+							}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just('Couldn\u0027t load this page. Try reloading.')
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
+			case 'SetDevice':
+				var device = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{
-							page: $elm$core$Maybe$Just(pageData)
-						}),
+						{device: device}),
 					$elm$core$Platform$Cmd$none);
-			} else {
+			case 'AddBlock':
+				var blockType = msg.a;
 				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{
-							error: $elm$core$Maybe$Just('Couldn\u0027t load this page. Try reloading.')
-						}),
-					$elm$core$Platform$Cmd$none);
-			}
-		} else {
-			var device = msg.a;
-			return _Utils_Tuple2(
-				_Utils_update(
 					model,
-					{device: device}),
-				$elm$core$Platform$Cmd$none);
+					A2($author$project$Main$createBlock, model.flags, blockType));
+			default:
+				if (msg.a.$ === 'Ok') {
+					var block = msg.a.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								page: A2(
+									$elm$core$Maybe$map,
+									function (p) {
+										return _Utils_update(
+											p,
+											{
+												blocks: _Utils_ap(
+													p.blocks,
+													_List_fromArray(
+														[block]))
+											});
+									},
+									model.page)
+							}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just('Couldn\u0027t add that block. Try again.')
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
 		}
 	});
 var $elm$json$Json$Decode$value = _Json_decodeValue;
-var $elm$json$Json$Encode$string = _Json_wrap;
 var $elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
 		return A2(
@@ -6331,12 +6489,81 @@ var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $author$project$Main$AddBlock = function (a) {
+	return {$: 'AddBlock', a: a};
+};
+var $author$project$Main$HeaderType = {$: 'HeaderType'};
+var $author$project$Main$LinkType = {$: 'LinkType'};
 var $author$project$Main$Phone = {$: 'Phone'};
+var $author$project$Main$SocialIconsType = {$: 'SocialIconsType'};
 var $author$project$Main$Tablet = {$: 'Tablet'};
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
+var $author$project$Main$isHeader = function (content) {
+	if (content.$ === 'HeaderContent') {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $elm$core$Basics$not = _Basics_not;
+var $author$project$Main$canAddHeader = function (blocks) {
+	return !A2(
+		$elm$core$List$any,
+		function (block) {
+			return $author$project$Main$isHeader(block.content);
+		},
+		blocks);
+};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$disabled = $elm$html$Html$Attributes$boolProperty('disabled');
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
 var $author$project$Main$SetDevice = function (a) {
 	return {$: 'SetDevice', a: a};
 };
-var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
 		return A3(
@@ -6372,23 +6599,6 @@ var $author$project$Main$deviceLabel = function (device) {
 			return 'Phone';
 	}
 };
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'click',
-		$elm$json$Json$Decode$succeed(msg));
-};
 var $author$project$Main$viewDeviceButton = F2(
 	function (current, device) {
 		return A2(
@@ -6412,29 +6622,74 @@ var $author$project$Main$viewDeviceButton = F2(
 					$author$project$Main$deviceLabel(device))
 				]));
 	});
-var $author$project$Main$viewControls = function (model) {
-	return A2(
-		$elm$html$Html$div,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class('editor-controls-pane')
-			]),
-		_List_fromArray(
-			[
-				A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('device-switcher')
-					]),
-				_List_fromArray(
-					[
-						A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Desktop),
-						A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Tablet),
-						A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Phone)
-					]))
-			]));
-};
+var $author$project$Main$viewControls = F2(
+	function (model, pageData) {
+		return A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('editor-controls-pane')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('device-switcher')
+						]),
+					_List_fromArray(
+						[
+							A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Desktop),
+							A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Tablet),
+							A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Phone)
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('add-block-row')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Events$onClick(
+									$author$project$Main$AddBlock($author$project$Main$LinkType))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Add Link')
+								])),
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Events$onClick(
+									$author$project$Main$AddBlock($author$project$Main$HeaderType)),
+									$elm$html$Html$Attributes$disabled(
+									!$author$project$Main$canAddHeader(pageData.blocks))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Add Header')
+								])),
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Events$onClick(
+									$author$project$Main$AddBlock($author$project$Main$SocialIconsType))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Add Social icons')
+								]))
+						]))
+				]));
+	});
 var $author$project$Main$deviceWidth = function (device) {
 	switch (device.$) {
 		case 'Desktop':
@@ -6445,16 +6700,6 @@ var $author$project$Main$deviceWidth = function (device) {
 			return $elm$core$Maybe$Just(390);
 	}
 };
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $elm$html$Html$i = _VirtualDom_node('i');
@@ -6607,7 +6852,7 @@ var $author$project$Main$view = function (model) {
 				_List_fromArray(
 					[
 						A2($author$project$Main$viewPreview, model, pageData),
-						$author$project$Main$viewControls(model)
+						A2($author$project$Main$viewControls, model, pageData)
 					]));
 		}
 	}

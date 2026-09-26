@@ -38,3 +38,31 @@ def test_page_editor_shows_existing_blocks_and_switches_device_width(
 
     page.click("button:text-is('Tablet')")
     expect(page.locator(".preview-frame")).to_have_css("width", "768px")
+
+
+def test_adding_a_link_block_shows_up_in_the_preview(page, live_server, demo_user, demo_page):
+    page.goto(f"{live_server.url}/login/")
+    page.fill("#login-email", demo_user.email)
+    page.fill("#login-password", "password123")
+    page.click("#login-submit")
+    page.wait_for_url("**/dashboard/")
+
+    page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
+    page.click("button:text-is('Add Link')")
+
+    expect(page.locator(".preview-block-link")).to_contain_text("New link")
+
+
+def test_add_header_button_disables_once_a_header_exists(
+    page, live_server, demo_user, demo_page
+):
+    page.goto(f"{live_server.url}/login/")
+    page.fill("#login-email", demo_user.email)
+    page.fill("#login-password", "password123")
+    page.click("#login-submit")
+    page.wait_for_url("**/dashboard/")
+
+    page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
+    page.click("button:text-is('Add Header')")
+
+    expect(page.locator("button:text-is('Add Header')")).to_be_disabled()

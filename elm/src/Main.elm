@@ -6,6 +6,7 @@ module Main exposing
     , PageData
     , SocialIcon
     , blockDecoder
+    , canAddHeader
     , deviceWidth
     , flagsDecoder
     , main
@@ -17,6 +18,7 @@ import Html.Attributes exposing (class, classList, style)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type alias Flags =
@@ -62,6 +64,60 @@ type alias PageData =
     , title : String
     , blocks : List Block
     }
+
+
+type BlockType
+    = LinkType
+    | HeaderType
+    | SocialIconsType
+
+
+blockTypeApiValue : BlockType -> String
+blockTypeApiValue blockType =
+    case blockType of
+        LinkType ->
+            "link"
+
+        HeaderType ->
+            "header"
+
+        SocialIconsType ->
+            "social_icons"
+
+
+defaultData : BlockType -> String -> Encode.Value
+defaultData blockType pageTitle =
+    case blockType of
+        LinkType ->
+            Encode.object
+                [ ( "label", Encode.string "New link" )
+                , ( "url", Encode.string "https://example.com" )
+                ]
+
+        HeaderType ->
+            Encode.object
+                [ ( "display_name", Encode.string pageTitle )
+                , ( "bio", Encode.string "" )
+                , ( "avatar_url", Encode.string "" )
+                ]
+
+        SocialIconsType ->
+            Encode.object [ ( "icons", Encode.list identity [] ) ]
+
+
+canAddHeader : List Block -> Bool
+canAddHeader blocks =
+    not (List.any (\block -> isHeader block.content) blocks)
+
+
+isHeader : BlockContent -> Bool
+isHeader content =
+    case content of
+        HeaderContent _ ->
+            True
+
+        _ ->
+            False
 
 
 socialIconDecoder : Decoder SocialIcon
@@ -149,6 +205,8 @@ type alias Model =
 type Msg
     = PageLoaded (Result Http.Error PageData)
     | SetDevice Device
+    | AddBlock BlockType
+    | BlockCreated (Result Http.Error Block)
 
 
 fetchPage : Flags -> Cmd Msg
@@ -156,6 +214,25 @@ fetchPage flags =
     Http.get
         { url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/"
         , expect = Http.expectJson PageLoaded pageDecoder
+        }
+
+
+createBlock : Flags -> BlockType -> Cmd Msg
+createBlock flags blockType =
+    Http.request
+        { method = "POST"
+        , headers = [ Http.header "X-CSRFToken" flags.csrfToken ]
+        , url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/blocks/"
+        , body =
+            Http.jsonBody
+                (Encode.object
+                    [ ( "block_type", Encode.string (blockTypeApiValue blockType) )
+                    , ( "data", defaultData blockType flags.title )
+                    ]
+                )
+        , expect = Http.expectJson BlockCreated blockDecoder
+        , timeout = Nothing
+        , tracker = Nothing
         }
 
 
@@ -188,6 +265,17 @@ update msg model =
 
         SetDevice device ->
             ( { model | device = device }, Cmd.none )
+
+        AddBlock blockType ->
+            ( model, createBlock model.flags blockType )
+
+        BlockCreated (Ok block) ->
+            ( { model | page = Maybe.map (\p -> { p | blocks = p.blocks ++ [ block ] }) model.page }
+            , Cmd.none
+            )
+
+        BlockCreated (Err _) ->
+            ( { model | error = Just "Couldn't add that block. Try again." }, Cmd.none )
 
 
 viewDeviceButton : Device -> Device -> Html Msg
@@ -240,13 +328,22 @@ viewPreview model pageData =
         ]
 
 
-viewControls : Model -> Html Msg
-viewControls model =
+viewControls : Model -> PageData -> Html Msg
+viewControls model pageData =
     div [ class "editor-controls-pane" ]
         [ div [ class "device-switcher" ]
             [ viewDeviceButton model.device Desktop
             , viewDeviceButton model.device Tablet
             , viewDeviceButton model.device Phone
+            ]
+        , div [ class "add-block-row" ]
+            [ button [ onClick (AddBlock LinkType) ] [ text "Add Link" ]
+            , button
+                [ onClick (AddBlock HeaderType)
+                , Html.Attributes.disabled (not (canAddHeader pageData.blocks))
+                ]
+                [ text "Add Header" ]
+            , button [ onClick (AddBlock SocialIconsType) ] [ text "Add Social icons" ]
             ]
         ]
 
@@ -261,7 +358,7 @@ view model =
             div [ class "editor-loading" ] [ text "Loading..." ]
 
         ( Nothing, Just pageData ) ->
-            div [ class "editor-shell" ] [ viewPreview model pageData, viewControls model ]
+            div [ class "editor-shell" ] [ viewPreview model pageData, viewControls model pageData ]
 
 
 main : Program Decode.Value Model Msg
