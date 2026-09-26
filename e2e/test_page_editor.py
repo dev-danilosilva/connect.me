@@ -10,4 +10,4 @@ def test_page_editor_loads_and_shows_the_page_title(page, live_server, demo_user
 
     page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
 
-    expect(page.locator("#elm-app")).to_contain_text(demo_page.title)
+    expect(page.locator("#editor-app-wrapper")).to_contain_text(demo_page.title)
