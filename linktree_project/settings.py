@@ -76,7 +76,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'accounts',
-    'pages',
+    'personal_links_manager',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'

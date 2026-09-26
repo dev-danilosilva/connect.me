@@ -69,7 +69,7 @@ docker compose down
 ### Running tests
 
 ```bash
-pytest accounts pages   # unit tests (pytest-django), fast, no browser
+pytest accounts personal_links_manager   # unit tests (pytest-django), fast, no browser
 playwright install chromium   # one-time, downloads the browser binary
 pytest e2e               # UI tests (Playwright), spins up a real browser + LiveServer
 pytest                   # runs both
@@ -77,7 +77,7 @@ pytest                   # runs both
 
 ### Git hooks
 
-A `pre-commit` hook (runs the fast unit tests, `pytest accounts pages`) lives in `.githooks/`. Activate it once per clone:
+A `pre-commit` hook (runs the fast unit tests, `pytest accounts personal_links_manager`) lives in `.githooks/`. Activate it once per clone:
 
 ```bash
 git config core.hooksPath .githooks

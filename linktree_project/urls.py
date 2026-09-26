@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from pages.views import admin_dashboard_data
+from personal_links_manager.views import admin_dashboard_data
 
 admin.site.site_header = "SharedLink admin"
 admin.site.site_title = "SharedLink admin"
@@ -28,6 +28,6 @@ urlpatterns = [
     # /admin/dashboard-data/ trying to resolve it as an app label.
     path('admin/dashboard-data/', admin_dashboard_data, name='admin_dashboard_data'),
     path('admin/', admin.site.urls),
-    path('', include('pages.urls')),
+    path('', include('personal_links_manager.urls')),
     path('', include('accounts.urls')),
 ]

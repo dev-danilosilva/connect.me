@@ -3,8 +3,8 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from accounts.models import User
-from pages.models import LinkPage
-from pages.utils import humanize_handle
+from personal_links_manager.models import LinkPage
+from personal_links_manager.utils import humanize_handle
 
 pytestmark = pytest.mark.django_db
 

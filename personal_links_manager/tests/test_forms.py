@@ -1,9 +1,9 @@
 import pytest
 
 from accounts.models import User
-from pages.forms import CreatePageForm
-from pages.models import LinkPage
-from pages.utils import RESERVED_HANDLES
+from personal_links_manager.forms import CreatePageForm
+from personal_links_manager.models import LinkPage
+from personal_links_manager.utils import RESERVED_HANDLES
 
 pytestmark = pytest.mark.django_db
 

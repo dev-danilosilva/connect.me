@@ -9,7 +9,7 @@ os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 import pytest
 
 from accounts.models import User
-from pages.models import LinkPage
+from personal_links_manager.models import LinkPage
 
 
 @pytest.fixture

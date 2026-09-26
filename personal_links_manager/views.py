@@ -9,7 +9,7 @@ from .stats import compute_dashboard_stats
 
 
 def home(request):
-    return render(request, "pages/home.html")
+    return render(request, "personal_links_manager/home.html")
 
 
 @login_required
@@ -19,7 +19,7 @@ def dashboard(request):
         "create_form": CreatePageForm(),
         "open_create_modal": False,
     }
-    return render(request, "pages/dashboard.html", context)
+    return render(request, "personal_links_manager/dashboard.html", context)
 
 
 @login_required
@@ -37,7 +37,7 @@ def create_page(request):
         "create_form": form,
         "open_create_modal": True,
     }
-    return render(request, "pages/dashboard.html", context)
+    return render(request, "personal_links_manager/dashboard.html", context)
 
 
 @login_required

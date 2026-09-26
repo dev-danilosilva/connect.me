@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 
 from accounts.models import User
-from pages.models import LinkPage
+from personal_links_manager.models import LinkPage
 
 pytestmark = pytest.mark.django_db
 

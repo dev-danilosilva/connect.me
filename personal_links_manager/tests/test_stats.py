@@ -1,8 +1,8 @@
 import pytest
 
 from accounts.models import User
-from pages.models import LinkPage
-from pages.stats import compute_dashboard_stats, pages_per_user_histogram, percentile
+from personal_links_manager.models import LinkPage
+from personal_links_manager.stats import compute_dashboard_stats, pages_per_user_histogram, percentile
 
 pytestmark = pytest.mark.django_db
 

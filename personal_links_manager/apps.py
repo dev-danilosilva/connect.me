@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class PagesConfig(AppConfig):
+class PersonalLinksManagerConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "pages"
+    name = "personal_links_manager"

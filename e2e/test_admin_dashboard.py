@@ -42,6 +42,6 @@ def test_changelist_page_still_fully_functional(page, live_server, demo_user, de
     page.click("input[type=submit]")
     page.wait_for_url("**/admin/**")
 
-    page.goto(live_server.url + "/admin/pages/linkpage/")
+    page.goto(live_server.url + "/admin/personal_links_manager/linkpage/")
     expect(page.locator("#result_list")).to_be_visible()
     expect(page.locator(f"text={demo_page.handle}")).to_be_visible()

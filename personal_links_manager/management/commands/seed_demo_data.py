@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from accounts.models import User
-from pages.models import LinkPage
+from personal_links_manager.models import LinkPage
 
 DEMO_EMAIL = "test@example.com"
 DEMO_PASSWORD = "password123"
