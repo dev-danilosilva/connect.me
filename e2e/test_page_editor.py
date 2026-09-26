@@ -66,3 +66,30 @@ def test_add_header_button_disables_once_a_header_exists(
     page.click("button:text-is('Add Header')")
 
     expect(page.locator("button:text-is('Add Header')")).to_be_disabled()
+
+
+def test_editing_a_link_label_updates_the_preview_without_reload(
+    page, live_server, demo_user, demo_page
+):
+    from personal_links_manager.models import Block
+
+    Block.objects.create(
+        page=demo_page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "Original", "url": "https://example.com"},
+    )
+
+    page.goto(f"{live_server.url}/login/")
+    page.fill("#login-email", demo_user.email)
+    page.fill("#login-password", "password123")
+    page.click("#login-submit")
+    page.wait_for_url("**/dashboard/")
+
+    page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
+    page.fill(".block-editor input >> nth=0", "Updated label")
+
+    expect(page.locator(".preview-block-link")).to_contain_text("Updated label")
+
+    # Give the 500ms debounce time to fire, then reload and confirm it persisted.
+    page.wait_for_timeout(700)
+    page.reload()
+    expect(page.locator(".preview-block-link")).to_contain_text("Updated label")

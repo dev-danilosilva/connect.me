@@ -10,15 +10,19 @@ module Main exposing
     , deviceWidth
     , flagsDecoder
     , main
+    , updateBlockContent
     )
 
 import Browser
+import Dict exposing (Dict)
 import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (class, classList, style)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Process
+import Task
 
 
 type alias Flags =
@@ -120,6 +124,24 @@ isHeader content =
             False
 
 
+updateBlockContent :
+    ({ label : String, url : String } -> { label : String, url : String })
+    -> ({ displayName : String, bio : String, avatarUrl : String } -> { displayName : String, bio : String, avatarUrl : String })
+    -> ({ icons : List SocialIcon } -> { icons : List SocialIcon })
+    -> BlockContent
+    -> BlockContent
+updateBlockContent editLink editHeader editSocial content =
+    case content of
+        LinkContent link ->
+            LinkContent (editLink link)
+
+        HeaderContent header ->
+            HeaderContent (editHeader header)
+
+        SocialIconsContent social ->
+            SocialIconsContent (editSocial social)
+
+
 socialIconDecoder : Decoder SocialIcon
 socialIconDecoder =
     Decode.map2 SocialIcon
@@ -199,6 +221,7 @@ type alias Model =
     , page : Maybe PageData
     , device : Device
     , error : Maybe String
+    , pendingSaves : Dict Int Int
     }
 
 
@@ -207,6 +230,9 @@ type Msg
     | SetDevice Device
     | AddBlock BlockType
     | BlockCreated (Result Http.Error Block)
+    | EditBlock Int BlockContent
+    | Debounced Int
+    | BlockSaved Int (Result Http.Error Block)
 
 
 fetchPage : Flags -> Cmd Msg
@@ -236,11 +262,52 @@ createBlock flags blockType =
         }
 
 
+contentEncoder : BlockContent -> Encode.Value
+contentEncoder content =
+    case content of
+        LinkContent { label, url } ->
+            Encode.object [ ( "label", Encode.string label ), ( "url", Encode.string url ) ]
+
+        HeaderContent { displayName, bio, avatarUrl } ->
+            Encode.object
+                [ ( "display_name", Encode.string displayName )
+                , ( "bio", Encode.string bio )
+                , ( "avatar_url", Encode.string avatarUrl )
+                ]
+
+        SocialIconsContent { icons } ->
+            Encode.object
+                [ ( "icons"
+                  , Encode.list
+                        (\icon ->
+                            Encode.object
+                                [ ( "platform", Encode.string icon.platform )
+                                , ( "url", Encode.string icon.url )
+                                ]
+                        )
+                        icons
+                  )
+                ]
+
+
+saveBlock : Flags -> Block -> Cmd Msg
+saveBlock flags block =
+    Http.request
+        { method = "PATCH"
+        , headers = [ Http.header "X-CSRFToken" flags.csrfToken ]
+        , url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/blocks/" ++ String.fromInt block.id ++ "/"
+        , body = Http.jsonBody (Encode.object [ ( "data", contentEncoder block.content ) ])
+        , expect = Http.expectJson (BlockSaved block.id) blockDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 init : Decode.Value -> ( Model, Cmd Msg )
 init flagsJson =
     case Decode.decodeValue flagsDecoder flagsJson of
         Ok flags ->
-            ( { flags = flags, page = Nothing, device = Desktop, error = Nothing }
+            ( { flags = flags, page = Nothing, device = Desktop, error = Nothing, pendingSaves = Dict.empty }
             , fetchPage flags
             )
 
@@ -249,6 +316,7 @@ init flagsJson =
               , page = Nothing
               , device = Desktop
               , error = Just "Couldn't read page configuration."
+              , pendingSaves = Dict.empty
               }
             , Cmd.none
             )
@@ -276,6 +344,51 @@ update msg model =
 
         BlockCreated (Err _) ->
             ( { model | error = Just "Couldn't add that block. Try again." }, Cmd.none )
+
+        EditBlock blockId newContent ->
+            let
+                nextGeneration =
+                    (Dict.get blockId model.pendingSaves |> Maybe.withDefault 0) + 1
+
+                updatedPage =
+                    Maybe.map
+                        (\p ->
+                            { p
+                                | blocks =
+                                    List.map
+                                        (\b ->
+                                            if b.id == blockId then
+                                                { b | content = newContent }
+
+                                            else
+                                                b
+                                        )
+                                        p.blocks
+                            }
+                        )
+                        model.page
+            in
+            ( { model | page = updatedPage, pendingSaves = Dict.insert blockId nextGeneration model.pendingSaves }
+            , Process.sleep 500 |> Task.perform (\_ -> Debounced blockId)
+            )
+
+        Debounced blockId ->
+            let
+                maybeBlock =
+                    model.page |> Maybe.andThen (\p -> List.filter (\b -> b.id == blockId) p.blocks |> List.head)
+            in
+            case maybeBlock of
+                Just block ->
+                    ( model, saveBlock model.flags block )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        BlockSaved _ (Ok _) ->
+            ( model, Cmd.none )
+
+        BlockSaved _ (Err _) ->
+            ( { model | error = Just "Couldn't save a change. Reload and try again." }, Cmd.none )
 
 
 viewDeviceButton : Device -> Device -> Html Msg
@@ -317,6 +430,91 @@ viewBlockPreview block =
                 (List.map (\icon -> Html.i [ class ("fa-brands fa-" ++ icon.platform) ] []) icons)
 
 
+viewBlockEditor : Block -> Html Msg
+viewBlockEditor block =
+    case block.content of
+        LinkContent link ->
+            div [ class "block-editor" ]
+                [ Html.input
+                    [ Html.Attributes.value link.label
+                    , Html.Events.onInput
+                        (\v -> EditBlock block.id (updateBlockContent (\l -> { l | label = v }) identity identity block.content))
+                    ]
+                    []
+                , Html.input
+                    [ Html.Attributes.value link.url
+                    , Html.Events.onInput
+                        (\v -> EditBlock block.id (updateBlockContent (\l -> { l | url = v }) identity identity block.content))
+                    ]
+                    []
+                ]
+
+        HeaderContent header ->
+            div [ class "block-editor" ]
+                [ Html.input
+                    [ Html.Attributes.value header.displayName
+                    , Html.Events.onInput
+                        (\v -> EditBlock block.id (updateBlockContent identity (\h -> { h | displayName = v }) identity block.content))
+                    ]
+                    []
+                , Html.textarea
+                    [ Html.Attributes.value header.bio
+                    , Html.Events.onInput
+                        (\v -> EditBlock block.id (updateBlockContent identity (\h -> { h | bio = v }) identity block.content))
+                    ]
+                    []
+                ]
+
+        SocialIconsContent social ->
+            div [ class "block-editor" ]
+                (List.indexedMap
+                    (\index icon ->
+                        div [ class "social-icon-row" ]
+                            [ Html.input
+                                [ Html.Attributes.value icon.platform
+                                , Html.Attributes.placeholder "platform (e.g. twitter)"
+                                , Html.Events.onInput
+                                    (\v ->
+                                        EditBlock block.id
+                                            (updateBlockContent identity
+                                                identity
+                                                (\s -> { s | icons = List.indexedMap (\i ic -> if i == index then { ic | platform = v } else ic) s.icons })
+                                                block.content
+                                            )
+                                    )
+                                ]
+                                []
+                            , Html.input
+                                [ Html.Attributes.value icon.url
+                                , Html.Events.onInput
+                                    (\v ->
+                                        EditBlock block.id
+                                            (updateBlockContent identity
+                                                identity
+                                                (\s -> { s | icons = List.indexedMap (\i ic -> if i == index then { ic | url = v } else ic) s.icons })
+                                                block.content
+                                            )
+                                    )
+                                ]
+                                []
+                            ]
+                    )
+                    social.icons
+                    ++ [ button
+                            [ onClick
+                                (EditBlock block.id
+                                    (updateBlockContent identity
+                                        identity
+                                        (\s -> { s | icons = s.icons ++ [ SocialIcon "" "" ] })
+                                        block.content
+                                    )
+                                )
+                            ]
+                            [ text "Add icon" ]
+                       ]
+                )
+
+
 viewPreview : Model -> PageData -> Html Msg
 viewPreview model pageData =
     div [ class "editor-preview-pane" ]
@@ -345,6 +543,7 @@ viewControls model pageData =
                 [ text "Add Header" ]
             , button [ onClick (AddBlock SocialIconsType) ] [ text "Add Social icons" ]
             ]
+        , div [ class "block-list" ] (List.map viewBlockEditor pageData.blocks)
         ]
 
 

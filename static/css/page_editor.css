@@ -57,3 +57,18 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.block-editor {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.social-icon-row {
+  display: flex;
+  gap: 0.5rem;
+}

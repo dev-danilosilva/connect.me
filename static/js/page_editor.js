@@ -5348,6 +5348,8 @@ var $author$project$Main$Flags = F5(
 		return {apiBase: apiBase, csrfToken: csrfToken, handle: handle, pageId: pageId, title: title};
 	});
 var $elm$json$Json$Decode$decodeValue = _Json_run;
+var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
 var $author$project$Main$PageLoaded = function (a) {
 	return {$: 'PageLoaded', a: a};
 };
@@ -5371,8 +5373,6 @@ var $elm$http$Http$Sending = function (a) {
 	return {$: 'Sending', a: a};
 };
 var $elm$http$Http$Timeout_ = {$: 'Timeout_'};
-var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
-var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
 var $elm$core$Maybe$isJust = function (maybe) {
 	if (maybe.$ === 'Just') {
 		return true;
@@ -6273,7 +6273,7 @@ var $author$project$Main$init = function (flagsJson) {
 	if (_v0.$ === 'Ok') {
 		var flags = _v0.a;
 		return _Utils_Tuple2(
-			{device: $author$project$Main$Desktop, error: $elm$core$Maybe$Nothing, flags: flags, page: $elm$core$Maybe$Nothing},
+			{device: $author$project$Main$Desktop, error: $elm$core$Maybe$Nothing, flags: flags, page: $elm$core$Maybe$Nothing, pendingSaves: $elm$core$Dict$empty},
 			$author$project$Main$fetchPage(flags));
 	} else {
 		return _Utils_Tuple2(
@@ -6281,13 +6281,26 @@ var $author$project$Main$init = function (flagsJson) {
 				device: $author$project$Main$Desktop,
 				error: $elm$core$Maybe$Just('Couldn\u0027t read page configuration.'),
 				flags: A5($author$project$Main$Flags, 0, '', '', '', ''),
-				page: $elm$core$Maybe$Nothing
+				page: $elm$core$Maybe$Nothing,
+				pendingSaves: $elm$core$Dict$empty
 			},
 			$elm$core$Platform$Cmd$none);
 	}
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $author$project$Main$Debounced = function (a) {
+	return {$: 'Debounced', a: a};
+};
+var $elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
 var $author$project$Main$BlockCreated = function (a) {
 	return {$: 'BlockCreated', a: a};
 };
@@ -6400,6 +6413,26 @@ var $author$project$Main$createBlock = F2(
 				url: flags.apiBase + ('pages/' + (flags.handle + '/blocks/'))
 			});
 	});
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
 var $elm$core$Maybe$map = F2(
 	function (f, maybe) {
 		if (maybe.$ === 'Just') {
@@ -6408,6 +6441,103 @@ var $elm$core$Maybe$map = F2(
 				f(value));
 		} else {
 			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $author$project$Main$BlockSaved = F2(
+	function (a, b) {
+		return {$: 'BlockSaved', a: a, b: b};
+	});
+var $author$project$Main$contentEncoder = function (content) {
+	switch (content.$) {
+		case 'LinkContent':
+			var url = content.a.url;
+			var label = content.a.label;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'label',
+						$elm$json$Json$Encode$string(label)),
+						_Utils_Tuple2(
+						'url',
+						$elm$json$Json$Encode$string(url))
+					]));
+		case 'HeaderContent':
+			var avatarUrl = content.a.avatarUrl;
+			var bio = content.a.bio;
+			var displayName = content.a.displayName;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'display_name',
+						$elm$json$Json$Encode$string(displayName)),
+						_Utils_Tuple2(
+						'bio',
+						$elm$json$Json$Encode$string(bio)),
+						_Utils_Tuple2(
+						'avatar_url',
+						$elm$json$Json$Encode$string(avatarUrl))
+					]));
+		default:
+			var icons = content.a.icons;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'icons',
+						A2(
+							$elm$json$Json$Encode$list,
+							function (icon) {
+								return $elm$json$Json$Encode$object(
+									_List_fromArray(
+										[
+											_Utils_Tuple2(
+											'platform',
+											$elm$json$Json$Encode$string(icon.platform)),
+											_Utils_Tuple2(
+											'url',
+											$elm$json$Json$Encode$string(icon.url))
+										]));
+							},
+							icons))
+					]));
+	}
+};
+var $author$project$Main$saveBlock = F2(
+	function (flags, block) {
+		return $elm$http$Http$request(
+			{
+				body: $elm$http$Http$jsonBody(
+					$elm$json$Json$Encode$object(
+						_List_fromArray(
+							[
+								_Utils_Tuple2(
+								'data',
+								$author$project$Main$contentEncoder(block.content))
+							]))),
+				expect: A2(
+					$elm$http$Http$expectJson,
+					$author$project$Main$BlockSaved(block.id),
+					$author$project$Main$blockDecoder),
+				headers: _List_fromArray(
+					[
+						A2($elm$http$Http$header, 'X-CSRFToken', flags.csrfToken)
+					]),
+				method: 'PATCH',
+				timeout: $elm$core$Maybe$Nothing,
+				tracker: $elm$core$Maybe$Nothing,
+				url: flags.apiBase + ('pages/' + (flags.handle + ('/blocks/' + ($elm$core$String$fromInt(block.id) + '/'))))
+			});
+	});
+var $elm$core$Process$sleep = _Process_sleep;
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
 		}
 	});
 var $author$project$Main$update = F2(
@@ -6444,7 +6574,7 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(
 					model,
 					A2($author$project$Main$createBlock, model.flags, blockType));
-			default:
+			case 'BlockCreated':
 				if (msg.a.$ === 'Ok') {
 					var block = msg.a.a;
 					return _Utils_Tuple2(
@@ -6472,6 +6602,77 @@ var $author$project$Main$update = F2(
 							model,
 							{
 								error: $elm$core$Maybe$Just('Couldn\u0027t add that block. Try again.')
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
+			case 'EditBlock':
+				var blockId = msg.a;
+				var newContent = msg.b;
+				var updatedPage = A2(
+					$elm$core$Maybe$map,
+					function (p) {
+						return _Utils_update(
+							p,
+							{
+								blocks: A2(
+									$elm$core$List$map,
+									function (b) {
+										return _Utils_eq(b.id, blockId) ? _Utils_update(
+											b,
+											{content: newContent}) : b;
+									},
+									p.blocks)
+							});
+					},
+					model.page);
+				var nextGeneration = A2(
+					$elm$core$Maybe$withDefault,
+					0,
+					A2($elm$core$Dict$get, blockId, model.pendingSaves)) + 1;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							page: updatedPage,
+							pendingSaves: A3($elm$core$Dict$insert, blockId, nextGeneration, model.pendingSaves)
+						}),
+					A2(
+						$elm$core$Task$perform,
+						function (_v1) {
+							return $author$project$Main$Debounced(blockId);
+						},
+						$elm$core$Process$sleep(500)));
+			case 'Debounced':
+				var blockId = msg.a;
+				var maybeBlock = A2(
+					$elm$core$Maybe$andThen,
+					function (p) {
+						return $elm$core$List$head(
+							A2(
+								$elm$core$List$filter,
+								function (b) {
+									return _Utils_eq(b.id, blockId);
+								},
+								p.blocks));
+					},
+					model.page);
+				if (maybeBlock.$ === 'Just') {
+					var block = maybeBlock.a;
+					return _Utils_Tuple2(
+						model,
+						A2($author$project$Main$saveBlock, model.flags, block));
+				} else {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				}
+			default:
+				if (msg.b.$ === 'Ok') {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				} else {
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just('Couldn\u0027t save a change. Reload and try again.')
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
@@ -6561,20 +6762,308 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
+var $author$project$Main$EditBlock = F2(
+	function (a, b) {
+		return {$: 'EditBlock', a: a, b: b};
+	});
+var $elm$html$Html$input = _VirtualDom_node('input');
+var $elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var $elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $elm$html$Html$Events$targetValue = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	$elm$json$Json$Decode$string);
+var $elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysStop,
+			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
+};
+var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
+var $elm$html$Html$textarea = _VirtualDom_node('textarea');
+var $author$project$Main$updateBlockContent = F4(
+	function (editLink, editHeader, editSocial, content) {
+		switch (content.$) {
+			case 'LinkContent':
+				var link = content.a;
+				return $author$project$Main$LinkContent(
+					editLink(link));
+			case 'HeaderContent':
+				var header = content.a;
+				return $author$project$Main$HeaderContent(
+					editHeader(header));
+			default:
+				var social = content.a;
+				return $author$project$Main$SocialIconsContent(
+					editSocial(social));
+		}
+	});
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $author$project$Main$viewBlockEditor = function (block) {
+	var _v0 = block.content;
+	switch (_v0.$) {
+		case 'LinkContent':
+			var link = _v0.a;
+			return A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('block-editor')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$value(link.label),
+								$elm$html$Html$Events$onInput(
+								function (v) {
+									return A2(
+										$author$project$Main$EditBlock,
+										block.id,
+										A4(
+											$author$project$Main$updateBlockContent,
+											function (l) {
+												return _Utils_update(
+													l,
+													{label: v});
+											},
+											$elm$core$Basics$identity,
+											$elm$core$Basics$identity,
+											block.content));
+								})
+							]),
+						_List_Nil),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$value(link.url),
+								$elm$html$Html$Events$onInput(
+								function (v) {
+									return A2(
+										$author$project$Main$EditBlock,
+										block.id,
+										A4(
+											$author$project$Main$updateBlockContent,
+											function (l) {
+												return _Utils_update(
+													l,
+													{url: v});
+											},
+											$elm$core$Basics$identity,
+											$elm$core$Basics$identity,
+											block.content));
+								})
+							]),
+						_List_Nil)
+					]));
+		case 'HeaderContent':
+			var header = _v0.a;
+			return A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('block-editor')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$value(header.displayName),
+								$elm$html$Html$Events$onInput(
+								function (v) {
+									return A2(
+										$author$project$Main$EditBlock,
+										block.id,
+										A4(
+											$author$project$Main$updateBlockContent,
+											$elm$core$Basics$identity,
+											function (h) {
+												return _Utils_update(
+													h,
+													{displayName: v});
+											},
+											$elm$core$Basics$identity,
+											block.content));
+								})
+							]),
+						_List_Nil),
+						A2(
+						$elm$html$Html$textarea,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$value(header.bio),
+								$elm$html$Html$Events$onInput(
+								function (v) {
+									return A2(
+										$author$project$Main$EditBlock,
+										block.id,
+										A4(
+											$author$project$Main$updateBlockContent,
+											$elm$core$Basics$identity,
+											function (h) {
+												return _Utils_update(
+													h,
+													{bio: v});
+											},
+											$elm$core$Basics$identity,
+											block.content));
+								})
+							]),
+						_List_Nil)
+					]));
+		default:
+			var social = _v0.a;
+			return A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('block-editor')
+					]),
+				_Utils_ap(
+					A2(
+						$elm$core$List$indexedMap,
+						F2(
+							function (index, icon) {
+								return A2(
+									$elm$html$Html$div,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('social-icon-row')
+										]),
+									_List_fromArray(
+										[
+											A2(
+											$elm$html$Html$input,
+											_List_fromArray(
+												[
+													$elm$html$Html$Attributes$value(icon.platform),
+													$elm$html$Html$Attributes$placeholder('platform (e.g. twitter)'),
+													$elm$html$Html$Events$onInput(
+													function (v) {
+														return A2(
+															$author$project$Main$EditBlock,
+															block.id,
+															A4(
+																$author$project$Main$updateBlockContent,
+																$elm$core$Basics$identity,
+																$elm$core$Basics$identity,
+																function (s) {
+																	return _Utils_update(
+																		s,
+																		{
+																			icons: A2(
+																				$elm$core$List$indexedMap,
+																				F2(
+																					function (i, ic) {
+																						return _Utils_eq(i, index) ? _Utils_update(
+																							ic,
+																							{platform: v}) : ic;
+																					}),
+																				s.icons)
+																		});
+																},
+																block.content));
+													})
+												]),
+											_List_Nil),
+											A2(
+											$elm$html$Html$input,
+											_List_fromArray(
+												[
+													$elm$html$Html$Attributes$value(icon.url),
+													$elm$html$Html$Events$onInput(
+													function (v) {
+														return A2(
+															$author$project$Main$EditBlock,
+															block.id,
+															A4(
+																$author$project$Main$updateBlockContent,
+																$elm$core$Basics$identity,
+																$elm$core$Basics$identity,
+																function (s) {
+																	return _Utils_update(
+																		s,
+																		{
+																			icons: A2(
+																				$elm$core$List$indexedMap,
+																				F2(
+																					function (i, ic) {
+																						return _Utils_eq(i, index) ? _Utils_update(
+																							ic,
+																							{url: v}) : ic;
+																					}),
+																				s.icons)
+																		});
+																},
+																block.content));
+													})
+												]),
+											_List_Nil)
+										]));
+							}),
+						social.icons),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Events$onClick(
+									A2(
+										$author$project$Main$EditBlock,
+										block.id,
+										A4(
+											$author$project$Main$updateBlockContent,
+											$elm$core$Basics$identity,
+											$elm$core$Basics$identity,
+											function (s) {
+												return _Utils_update(
+													s,
+													{
+														icons: _Utils_ap(
+															s.icons,
+															_List_fromArray(
+																[
+																	A2($author$project$Main$SocialIcon, '', '')
+																]))
+													});
+											},
+											block.content)))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Add icon')
+								]))
+						])));
+	}
+};
 var $author$project$Main$SetDevice = function (a) {
 	return {$: 'SetDevice', a: a};
 };
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
 var $elm$core$Tuple$second = function (_v0) {
 	var y = _v0.b;
 	return y;
@@ -6687,7 +7176,14 @@ var $author$project$Main$viewControls = F2(
 								[
 									$elm$html$Html$text('Add Social icons')
 								]))
-						]))
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('block-list')
+						]),
+					A2($elm$core$List$map, $author$project$Main$viewBlockEditor, pageData.blocks))
 				]));
 	});
 var $author$project$Main$deviceWidth = function (device) {
@@ -6772,15 +7268,6 @@ var $author$project$Main$viewBlockPreview = function (block) {
 					icons));
 	}
 };
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var $author$project$Main$viewPreview = F2(
 	function (model, pageData) {
 		return A2(

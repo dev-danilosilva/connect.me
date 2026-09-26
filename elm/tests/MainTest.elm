@@ -1,8 +1,14 @@
-module MainTest exposing (blockDecoderSuite, canAddHeaderSuite, deviceSuite, suite)
+module MainTest exposing
+    ( blockDecoderSuite
+    , canAddHeaderSuite
+    , deviceSuite
+    , suite
+    , updateBlockContentSuite
+    )
 
 import Expect
 import Json.Decode as Decode
-import Main exposing (Block, BlockContent(..), Device(..), blockDecoder, canAddHeader, deviceWidth, flagsDecoder)
+import Main exposing (Block, BlockContent(..), Device(..), blockDecoder, canAddHeader, deviceWidth, flagsDecoder, updateBlockContent)
 import Test exposing (Test, describe, test)
 
 
@@ -64,4 +70,19 @@ canAddHeaderSuite =
                     (canAddHeader
                         [ Block 1 0 True (HeaderContent { displayName = "Jane", bio = "", avatarUrl = "" }) ]
                     )
+        ]
+
+
+updateBlockContentSuite : Test
+updateBlockContentSuite =
+    describe "updateBlockContent"
+        [ test "replaces a link block's label" <|
+            \_ ->
+                let
+                    original =
+                        LinkContent { label = "Old", url = "https://old.example" }
+                in
+                Expect.equal
+                    (LinkContent { label = "New", url = "https://old.example" })
+                    (updateBlockContent (\l -> { l | label = "New" }) identity identity original)
         ]
