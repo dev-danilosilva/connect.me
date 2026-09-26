@@ -6193,24 +6193,18 @@ var $author$project$Main$contentDecoder = function (blockType) {
 							{avatarUrl: avatarUrl, bio: bio, displayName: displayName});
 					}),
 				A2($elm$json$Json$Decode$field, 'display_name', $elm$json$Json$Decode$string),
-				A2(
-					$elm$json$Json$Decode$field,
-					'bio',
-					$elm$json$Json$Decode$oneOf(
-						_List_fromArray(
-							[
-								$elm$json$Json$Decode$string,
-								$elm$json$Json$Decode$succeed('')
-							]))),
-				A2(
-					$elm$json$Json$Decode$field,
-					'avatar_url',
-					$elm$json$Json$Decode$oneOf(
-						_List_fromArray(
-							[
-								$elm$json$Json$Decode$string,
-								$elm$json$Json$Decode$succeed('')
-							]))));
+				$elm$json$Json$Decode$oneOf(
+					_List_fromArray(
+						[
+							A2($elm$json$Json$Decode$field, 'bio', $elm$json$Json$Decode$string),
+							$elm$json$Json$Decode$succeed('')
+						])),
+				$elm$json$Json$Decode$oneOf(
+					_List_fromArray(
+						[
+							A2($elm$json$Json$Decode$field, 'avatar_url', $elm$json$Json$Decode$string),
+							$elm$json$Json$Decode$succeed('')
+						])));
 		case 'social_icons':
 			return A2(
 				$elm$json$Json$Decode$map,

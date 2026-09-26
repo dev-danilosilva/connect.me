@@ -5,6 +5,7 @@ module Main exposing
     , Flags
     , PageData
     , SocialIcon
+    , blockDecoder
     , deviceWidth
     , flagsDecoder
     , main
@@ -84,8 +85,8 @@ contentDecoder blockType =
                     HeaderContent { displayName = displayName, bio = bio, avatarUrl = avatarUrl }
                 )
                 (Decode.field "display_name" Decode.string)
-                (Decode.field "bio" (Decode.oneOf [ Decode.string, Decode.succeed "" ]))
-                (Decode.field "avatar_url" (Decode.oneOf [ Decode.string, Decode.succeed "" ]))
+                (Decode.oneOf [ Decode.field "bio" Decode.string, Decode.succeed "" ])
+                (Decode.oneOf [ Decode.field "avatar_url" Decode.string, Decode.succeed "" ])
 
         "social_icons" ->
             Decode.map (\icons -> SocialIconsContent { icons = icons })
