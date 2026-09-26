@@ -45,3 +45,49 @@ def test_page_detail_rejects_non_owner(client, page):
 def test_page_detail_rejects_anonymous(client, page):
     response = client.get(reverse("api_page_detail", args=[page.handle]))
     assert response.status_code == 403
+
+
+def test_create_block_appends_at_end_of_page(client, owner, page):
+    Block.objects.create(
+        page=page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "First", "url": "https://a.example"},
+    )
+    client.force_login(owner)
+
+    response = client.post(
+        reverse("api_block_create", args=[page.handle]),
+        {"block_type": "link", "data": {"label": "Second", "url": "https://b.example"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    assert response.json()["position"] == 1
+
+
+def test_create_block_rejects_a_second_header_block(client, owner, page):
+    Block.objects.create(
+        page=page, block_type=Block.BlockType.HEADER, position=0,
+        data={"display_name": "Jane"},
+    )
+    client.force_login(owner)
+
+    response = client.post(
+        reverse("api_block_create", args=[page.handle]),
+        {"block_type": "header", "data": {"display_name": "Jane Again"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+
+
+def test_create_block_rejects_non_owner(client, page):
+    other = User.objects.create_user(email="other2@example.com", password="password123")
+    client.force_login(other)
+
+    response = client.post(
+        reverse("api_block_create", args=[page.handle]),
+        {"block_type": "link", "data": {"label": "Nope", "url": "https://x.example"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 403
