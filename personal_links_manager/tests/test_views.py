@@ -106,17 +106,15 @@ def test_check_handle_availability_requires_login(client):
     assert response.status_code == 403
 
 
-def test_admin_dashboard_data_redirects_anonymous_to_admin_login(client):
+def test_admin_dashboard_data_returns_403_for_anonymous(client):
     response = client.get(reverse("admin_dashboard_data"))
-    assert response.status_code == 302
-    assert response.url.startswith("/admin/login/")
+    assert response.status_code == 403
 
 
-def test_admin_dashboard_data_redirects_non_staff_user_to_admin_login(client, user):
+def test_admin_dashboard_data_returns_403_for_non_staff_user(client, user):
     client.force_login(user)
     response = client.get(reverse("admin_dashboard_data"))
-    assert response.status_code == 302
-    assert response.url.startswith("/admin/login/")
+    assert response.status_code == 403
 
 
 def test_admin_dashboard_data_returns_stats_for_staff_user(client, user):

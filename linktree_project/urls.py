@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from personal_links_manager.views import admin_dashboard_data
+from personal_links_manager.api_views import AdminDashboardDataAPIView
 
 admin.site.site_header = "SharedLink admin"
 admin.site.site_title = "SharedLink admin"
@@ -26,7 +26,7 @@ admin.site.index_title = "Dashboard"
 urlpatterns = [
     # Must come before admin.site.urls, which would otherwise swallow
     # /admin/dashboard-data/ trying to resolve it as an app label.
-    path('admin/dashboard-data/', admin_dashboard_data, name='admin_dashboard_data'),
+    path('admin/dashboard-data/', AdminDashboardDataAPIView.as_view(), name='admin_dashboard_data'),
     path('admin/', admin.site.urls),
     path('', include('personal_links_manager.urls')),
     path('', include('accounts.urls')),
