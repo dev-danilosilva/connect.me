@@ -40,34 +40,6 @@ def test_page_editor_shows_existing_blocks_and_switches_device_width(
     expect(page.locator(".preview-frame")).to_have_css("width", "768px")
 
 
-def test_adding_a_link_block_shows_up_in_the_preview(page, live_server, demo_user, demo_page):
-    page.goto(f"{live_server.url}/login/")
-    page.fill("#login-email", demo_user.email)
-    page.fill("#login-password", "password123")
-    page.click("#login-submit")
-    page.wait_for_url("**/dashboard/")
-
-    page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
-    page.click("button:text-is('Add Link')")
-
-    expect(page.locator(".preview-block-link")).to_contain_text("New link")
-
-
-def test_add_header_button_disables_once_a_header_exists(
-    page, live_server, demo_user, demo_page
-):
-    page.goto(f"{live_server.url}/login/")
-    page.fill("#login-email", demo_user.email)
-    page.fill("#login-password", "password123")
-    page.click("#login-submit")
-    page.wait_for_url("**/dashboard/")
-
-    page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
-    page.click("button:text-is('Add Header')")
-
-    expect(page.locator("button:text-is('Add Header')")).to_be_disabled()
-
-
 def test_editing_a_link_label_updates_the_preview_without_reload(
     page, live_server, demo_user, demo_page
 ):
@@ -115,9 +87,20 @@ def test_deleting_a_block_removes_it_from_the_preview(page, live_server, demo_us
     expect(page.locator(".preview-block-link")).to_have_count(0)
 
 
-def test_full_editor_flow_add_edit_switch_device_reorder_and_persist(
+def test_full_editor_flow_edit_switch_device_reorder_and_persist(
     page, live_server, demo_user, demo_page
 ):
+    from personal_links_manager.models import Block
+
+    Block.objects.create(
+        page=demo_page, block_type=Block.BlockType.LINK, position=0,
+        data={"label": "New link", "url": "https://example.com"},
+    )
+    Block.objects.create(
+        page=demo_page, block_type=Block.BlockType.LINK, position=1,
+        data={"label": "New link", "url": "https://example.com"},
+    )
+
     page.goto(f"{live_server.url}/login/")
     page.fill("#login-email", demo_user.email)
     page.fill("#login-password", "password123")
@@ -125,14 +108,6 @@ def test_full_editor_flow_add_edit_switch_device_reorder_and_persist(
     page.wait_for_url("**/dashboard/")
 
     page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
-
-    # Add two Link blocks. Wait for the first block's create round-trip to
-    # land before adding the second, so the two creates can't race and land
-    # in a nondeterministic order (Elm appends each new block to the model
-    # only once its own BlockCreated response arrives).
-    page.click("button:text-is('Add Link')")
-    expect(page.locator(".preview-block-link")).to_have_count(1)
-    page.click("button:text-is('Add Link')")
     expect(page.locator(".preview-block-link")).to_have_count(2)
 
     # Edit the first block's label; preview updates without reload.

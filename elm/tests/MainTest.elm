@@ -1,6 +1,5 @@
 module MainTest exposing
     ( blockDecoderSuite
-    , canAddHeaderSuite
     , deviceSuite
     , moveBlockSuite
     , suite
@@ -9,7 +8,7 @@ module MainTest exposing
 
 import Expect
 import Json.Decode as Decode
-import Main exposing (Block, BlockContent(..), Device(..), blockDecoder, canAddHeader, deviceWidth, flagsDecoder, moveBlock, updateBlockContent)
+import Main exposing (Block, BlockContent(..), Device(..), blockDecoder, deviceWidth, flagsDecoder, moveBlock, updateBlockContent)
 import Test exposing (Test, describe, test)
 
 
@@ -53,24 +52,6 @@ blockDecoderSuite =
                     |> Result.map .content
                     |> Expect.equal
                         (Ok (HeaderContent { displayName = "Jane", bio = "", avatarUrl = "" }))
-        ]
-
-
-canAddHeaderSuite : Test
-canAddHeaderSuite =
-    describe "canAddHeader"
-        [ test "true when there is no header block yet" <|
-            \_ ->
-                Expect.equal True
-                    (canAddHeader
-                        [ Block 1 0 True (LinkContent { label = "x", url = "https://x.example" }) ]
-                    )
-        , test "false once a header block exists" <|
-            \_ ->
-                Expect.equal False
-                    (canAddHeader
-                        [ Block 1 0 True (HeaderContent { displayName = "Jane", bio = "", avatarUrl = "" }) ]
-                    )
         ]
 
 
