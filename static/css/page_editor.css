@@ -17,6 +17,12 @@
   overflow-y: auto;
 }
 
+.editor-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .editor-shell {
   display: flex;
   width: 100%;

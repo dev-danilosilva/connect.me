@@ -7785,7 +7785,10 @@ var $author$project$Main$view = function (model) {
 		var pageData = _v0.a;
 		return A2(
 			$elm$html$Html$div,
-			_List_Nil,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('editor-root')
+				]),
 			A2(
 				$elm$core$List$filterMap,
 				$elm$core$Basics$identity,

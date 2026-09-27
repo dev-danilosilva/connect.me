@@ -703,7 +703,7 @@ view : Model -> Html Msg
 view model =
     case model.page of
         Just pageData ->
-            div []
+            div [ class "editor-root" ]
                 (List.filterMap identity
                     [ Maybe.map viewErrorBanner model.error
                     , Just (div [ class "editor-shell" ] [ viewPreview model pageData, viewControls model pageData ])
