@@ -6326,9 +6326,10 @@ var $author$project$Main$init = function (flagsJson) {
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Main$Debounced = function (a) {
-	return {$: 'Debounced', a: a};
-};
+var $author$project$Main$Debounced = F2(
+	function (a, b) {
+		return {$: 'Debounced', a: a, b: b};
+	});
 var $elm$core$Maybe$andThen = F2(
 	function (callback, maybeValue) {
 		if (maybeValue.$ === 'Just') {
@@ -6840,6 +6841,7 @@ var $author$project$Main$update = F2(
 						_Utils_update(
 							model,
 							{
+								error: $elm$core$Maybe$Nothing,
 								page: $elm$core$Maybe$Just(pageData)
 							}),
 						$elm$core$Platform$Cmd$none);
@@ -6871,6 +6873,7 @@ var $author$project$Main$update = F2(
 						_Utils_update(
 							model,
 							{
+								error: $elm$core$Maybe$Nothing,
 								page: A2(
 									$elm$core$Maybe$map,
 									function (p) {
@@ -6929,34 +6932,47 @@ var $author$project$Main$update = F2(
 					A2(
 						$elm$core$Task$perform,
 						function (_v1) {
-							return $author$project$Main$Debounced(blockId);
+							return A2($author$project$Main$Debounced, blockId, nextGeneration);
 						},
 						$elm$core$Process$sleep(500)));
 			case 'Debounced':
 				var blockId = msg.a;
-				var maybeBlock = A2(
-					$elm$core$Maybe$andThen,
-					function (p) {
-						return $elm$core$List$head(
-							A2(
-								$elm$core$List$filter,
-								function (b) {
-									return _Utils_eq(b.id, blockId);
-								},
-								p.blocks));
-					},
-					model.page);
-				if (maybeBlock.$ === 'Just') {
-					var block = maybeBlock.a;
-					return _Utils_Tuple2(
-						model,
-						A2($author$project$Main$saveBlock, model.flags, block));
+				var generation = msg.b;
+				var currentGeneration = A2(
+					$elm$core$Maybe$withDefault,
+					0,
+					A2($elm$core$Dict$get, blockId, model.pendingSaves));
+				if (_Utils_eq(generation, currentGeneration)) {
+					var _v2 = A2(
+						$elm$core$Maybe$andThen,
+						function (p) {
+							return $elm$core$List$head(
+								A2(
+									$elm$core$List$filter,
+									function (b) {
+										return _Utils_eq(b.id, blockId);
+									},
+									p.blocks));
+						},
+						model.page);
+					if (_v2.$ === 'Just') {
+						var block = _v2.a;
+						return _Utils_Tuple2(
+							model,
+							A2($author$project$Main$saveBlock, model.flags, block));
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
 				} else {
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				}
 			case 'BlockSaved':
 				if (msg.b.$ === 'Ok') {
-					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{error: $elm$core$Maybe$Nothing}),
+						$elm$core$Platform$Cmd$none);
 				} else {
 					return _Utils_Tuple2(
 						_Utils_update(
@@ -6991,7 +7007,11 @@ var $author$project$Main$update = F2(
 					A2($author$project$Main$deleteBlock, model.flags, blockId));
 			case 'BlockDeleted':
 				if (msg.b.$ === 'Ok') {
-					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{error: $elm$core$Maybe$Nothing}),
+						$elm$core$Platform$Cmd$none);
 				} else {
 					return _Utils_Tuple2(
 						_Utils_update(
@@ -7023,7 +7043,11 @@ var $author$project$Main$update = F2(
 				}
 			default:
 				if (msg.b.$ === 'Ok') {
-					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{error: $elm$core$Maybe$Nothing}),
+						$elm$core$Platform$Cmd$none);
 				} else {
 					var previousBlocks = msg.a;
 					return _Utils_Tuple2(
@@ -7631,6 +7655,18 @@ var $author$project$Main$viewControls = F2(
 					A2($elm$core$List$map, $author$project$Main$viewBlockEditor, pageData.blocks))
 				]));
 	});
+var $author$project$Main$viewErrorBanner = function (message) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('editor-error-banner')
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text(message)
+			]));
+};
 var $author$project$Main$deviceWidth = function (device) {
 	switch (device.$) {
 		case 'Desktop':
@@ -7744,23 +7780,46 @@ var $author$project$Main$viewPreview = F2(
 				]));
 	});
 var $author$project$Main$view = function (model) {
-	var _v0 = _Utils_Tuple2(model.error, model.page);
-	if (_v0.a.$ === 'Just') {
-		var message = _v0.a.a;
+	var _v0 = model.page;
+	if (_v0.$ === 'Just') {
+		var pageData = _v0.a;
 		return A2(
 			$elm$html$Html$div,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('editor-error')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text(message)
-				]));
+			_List_Nil,
+			A2(
+				$elm$core$List$filterMap,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						A2($elm$core$Maybe$map, $author$project$Main$viewErrorBanner, model.error),
+						$elm$core$Maybe$Just(
+						A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('editor-shell')
+								]),
+							_List_fromArray(
+								[
+									A2($author$project$Main$viewPreview, model, pageData),
+									A2($author$project$Main$viewControls, model, pageData)
+								])))
+					])));
 	} else {
-		if (_v0.b.$ === 'Nothing') {
-			var _v1 = _v0.a;
-			var _v2 = _v0.b;
+		var _v1 = model.error;
+		if (_v1.$ === 'Just') {
+			var message = _v1.a;
+			return A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('editor-error')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(message)
+					]));
+		} else {
 			return A2(
 				$elm$html$Html$div,
 				_List_fromArray(
@@ -7770,20 +7829,6 @@ var $author$project$Main$view = function (model) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text('Loading...')
-					]));
-		} else {
-			var _v3 = _v0.a;
-			var pageData = _v0.b.a;
-			return A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('editor-shell')
-					]),
-				_List_fromArray(
-					[
-						A2($author$project$Main$viewPreview, model, pageData),
-						A2($author$project$Main$viewControls, model, pageData)
 					]));
 		}
 	}

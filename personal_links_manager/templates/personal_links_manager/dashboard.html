@@ -44,12 +44,12 @@
 
     <div class="page-card-grid">
       {% for page in pages %}
-        <div class="page-card">
+        <a href="{% url 'page_editor' page.handle %}" class="page-card">
           <div class="page-card-icon">{% include "icons/link.html" %}</div>
           <h2 class="page-card-title">{{ page.title }}</h2>
           <p class="page-card-slug">mylinks.app/{{ page.handle }}</p>
           <div class="page-card-meta"><span>0 links</span></div>
-        </div>
+        </a>
       {% endfor %}
       <button type="button" class="page-card page-card-create" data-modal-open>
         <div class="page-card-create-icon">{% include "icons/plus.html" %}</div>

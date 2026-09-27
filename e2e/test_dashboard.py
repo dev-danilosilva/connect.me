@@ -45,8 +45,11 @@ def test_create_page_flow_end_to_end(page, live_server, demo_user):
     expect(page.locator("#create-page-submit")).to_be_enabled()
 
     page.click("#create-page-submit")
-    page.wait_for_url("**/dashboard/")
+    page.wait_for_url("**/dashboard/pages/brand-new-page/edit/")
 
+    # Navigate back to the dashboard to confirm the page was actually persisted
+    # and shows up there (not just that we landed on the editor).
+    page.goto(live_server.url + "/dashboard/")
     expect(page.locator("text=mylinks.app/brand-new-page")).to_have_count(1)
     expect(page.locator("h2.page-card-title:text-is('Brand New Page')")).to_have_count(1)
 

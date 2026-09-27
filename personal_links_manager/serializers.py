@@ -37,6 +37,10 @@ class BlockSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "position"]
 
     def validate(self, attrs):
+        if self.instance is not None and "block_type" in attrs and attrs["block_type"] != self.instance.block_type:
+            raise serializers.ValidationError(
+                {"block_type": "A block's type cannot be changed after creation."}
+            )
         block_type = attrs.get("block_type", getattr(self.instance, "block_type", None))
         data = attrs.get("data")
         if data is not None:

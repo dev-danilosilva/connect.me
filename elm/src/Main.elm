@@ -286,7 +286,7 @@ type Msg
     | AddBlock BlockType
     | BlockCreated (Result Http.Error Block)
     | EditBlock Int BlockContent
-    | Debounced Int
+    | Debounced Int Int
     | BlockSaved Int (Result Http.Error Block)
     | DeleteBlock Int
     | BlockDeleted Int (Result Http.Error ())
@@ -411,7 +411,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         PageLoaded (Ok pageData) ->
-            ( { model | page = Just pageData }, Cmd.none )
+            ( { model | page = Just pageData, error = Nothing }, Cmd.none )
 
         PageLoaded (Err _) ->
             ( { model | error = Just "Couldn't load this page. Try reloading." }, Cmd.none )
@@ -423,7 +423,7 @@ update msg model =
             ( model, createBlock model.flags blockType )
 
         BlockCreated (Ok block) ->
-            ( { model | page = Maybe.map (\p -> { p | blocks = p.blocks ++ [ block ] }) model.page }
+            ( { model | page = Maybe.map (\p -> { p | blocks = p.blocks ++ [ block ] }) model.page, error = Nothing }
             , Cmd.none
             )
 
@@ -454,23 +454,27 @@ update msg model =
                         model.page
             in
             ( { model | page = updatedPage, pendingSaves = Dict.insert blockId nextGeneration model.pendingSaves }
-            , Process.sleep 500 |> Task.perform (\_ -> Debounced blockId)
+            , Process.sleep 500 |> Task.perform (\_ -> Debounced blockId nextGeneration)
             )
 
-        Debounced blockId ->
+        Debounced blockId generation ->
             let
-                maybeBlock =
-                    model.page |> Maybe.andThen (\p -> List.filter (\b -> b.id == blockId) p.blocks |> List.head)
+                currentGeneration =
+                    Dict.get blockId model.pendingSaves |> Maybe.withDefault 0
             in
-            case maybeBlock of
-                Just block ->
-                    ( model, saveBlock model.flags block )
+            if generation == currentGeneration then
+                case model.page |> Maybe.andThen (\p -> List.filter (\b -> b.id == blockId) p.blocks |> List.head) of
+                    Just block ->
+                        ( model, saveBlock model.flags block )
 
-                Nothing ->
-                    ( model, Cmd.none )
+                    Nothing ->
+                        ( model, Cmd.none )
+
+            else
+                ( model, Cmd.none )
 
         BlockSaved _ (Ok _) ->
-            ( model, Cmd.none )
+            ( { model | error = Nothing }, Cmd.none )
 
         BlockSaved _ (Err _) ->
             ( { model | error = Just "Couldn't save a change. Reload and try again." }, Cmd.none )
@@ -481,7 +485,7 @@ update msg model =
             )
 
         BlockDeleted _ (Ok ()) ->
-            ( model, Cmd.none )
+            ( { model | error = Nothing }, Cmd.none )
 
         BlockDeleted _ (Err _) ->
             ( { model | error = Just "Couldn't delete that block. Reload to see the real state." }, Cmd.none )
@@ -507,7 +511,7 @@ update msg model =
             -- (the reorder round-trip typically finishes well before the
             -- 500ms edit debounce fires, so the snapshot can predate that
             -- edit) -- so on success we just keep the optimistic state.
-            ( model, Cmd.none )
+            ( { model | error = Nothing }, Cmd.none )
 
         Reordered previousBlocks (Err _) ->
             ( { model
@@ -697,15 +701,27 @@ viewControls model pageData =
 
 view : Model -> Html Msg
 view model =
-    case ( model.error, model.page ) of
-        ( Just message, _ ) ->
-            div [ class "editor-error" ] [ text message ]
+    case model.page of
+        Just pageData ->
+            div []
+                (List.filterMap identity
+                    [ Maybe.map viewErrorBanner model.error
+                    , Just (div [ class "editor-shell" ] [ viewPreview model pageData, viewControls model pageData ])
+                    ]
+                )
 
-        ( Nothing, Nothing ) ->
-            div [ class "editor-loading" ] [ text "Loading..." ]
+        Nothing ->
+            case model.error of
+                Just message ->
+                    div [ class "editor-error" ] [ text message ]
 
-        ( Nothing, Just pageData ) ->
-            div [ class "editor-shell" ] [ viewPreview model pageData, viewControls model pageData ]
+                Nothing ->
+                    div [ class "editor-loading" ] [ text "Loading..." ]
+
+
+viewErrorBanner : String -> Html Msg
+viewErrorBanner message =
+    div [ class "editor-error-banner" ] [ text message ]
 
 
 main : Program Decode.Value Model Msg
