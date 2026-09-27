@@ -6702,8 +6702,8 @@ var $author$project$Main$Reordered = F2(
 		return {$: 'Reordered', a: a, b: b};
 	});
 var $elm$json$Json$Encode$int = _Json_wrap;
-var $author$project$Main$reorderBlocks = F2(
-	function (flags, blocks) {
+var $author$project$Main$reorderBlocks = F3(
+	function (flags, previousBlocks, newBlocks) {
 		return $elm$http$Http$request(
 			{
 				body: $elm$http$Http$jsonBody(
@@ -6717,11 +6717,11 @@ var $author$project$Main$reorderBlocks = F2(
 									function (b) {
 										return $elm$json$Json$Encode$int(b.id);
 									},
-									blocks))
+									newBlocks))
 							]))),
 				expect: A2(
 					$elm$http$Http$expectJson,
-					$author$project$Main$Reordered(blocks),
+					$author$project$Main$Reordered(previousBlocks),
 					$author$project$Main$pageDecoder),
 				headers: _List_fromArray(
 					[
@@ -7017,20 +7017,13 @@ var $author$project$Main$update = F2(
 										p,
 										{blocks: reordered}))
 							}),
-						A2($author$project$Main$reorderBlocks, model.flags, reordered));
+						A3($author$project$Main$reorderBlocks, model.flags, p.blocks, reordered));
 				} else {
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				}
 			default:
 				if (msg.b.$ === 'Ok') {
-					var pageData = msg.b.a;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								page: $elm$core$Maybe$Just(pageData)
-							}),
-						$elm$core$Platform$Cmd$none);
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				} else {
 					var previousBlocks = msg.a;
 					return _Utils_Tuple2(

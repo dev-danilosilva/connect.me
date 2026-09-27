@@ -375,14 +375,14 @@ deleteBlock flags blockId =
         }
 
 
-reorderBlocks : Flags -> List Block -> Cmd Msg
-reorderBlocks flags blocks =
+reorderBlocks : Flags -> List Block -> List Block -> Cmd Msg
+reorderBlocks flags previousBlocks newBlocks =
     Http.request
         { method = "POST"
         , headers = [ Http.header "X-CSRFToken" flags.csrfToken ]
         , url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/blocks/reorder/"
-        , body = Http.jsonBody (Encode.object [ ( "block_ids", Encode.list (\b -> Encode.int b.id) blocks ) ])
-        , expect = Http.expectJson (Reordered blocks) pageDecoder
+        , body = Http.jsonBody (Encode.object [ ( "block_ids", Encode.list (\b -> Encode.int b.id) newBlocks ) ])
+        , expect = Http.expectJson (Reordered previousBlocks) pageDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -494,14 +494,20 @@ update msg model =
                             moveBlock blockId delta p.blocks
                     in
                     ( { model | page = Just { p | blocks = reordered } }
-                    , reorderBlocks model.flags reordered
+                    , reorderBlocks model.flags p.blocks reordered
                     )
 
                 Nothing ->
                     ( model, Cmd.none )
 
-        Reordered _ (Ok pageData) ->
-            ( { model | page = Just pageData }, Cmd.none )
+        Reordered _ (Ok _) ->
+            -- The optimistic reorder in MoveBlock already applied the new
+            -- order locally. Replacing model.page with the server's
+            -- snapshot here would clobber any edit that's mid-debounce
+            -- (the reorder round-trip typically finishes well before the
+            -- 500ms edit debounce fires, so the snapshot can predate that
+            -- edit) -- so on success we just keep the optimistic state.
+            ( model, Cmd.none )
 
         Reordered previousBlocks (Err _) ->
             ( { model

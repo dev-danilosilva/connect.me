@@ -126,8 +126,12 @@ def test_full_editor_flow_add_edit_switch_device_reorder_and_persist(
 
     page.goto(f"{live_server.url}/dashboard/pages/{demo_page.handle}/edit/")
 
-    # Add two Link blocks.
+    # Add two Link blocks. Wait for the first block's create round-trip to
+    # land before adding the second, so the two creates can't race and land
+    # in a nondeterministic order (Elm appends each new block to the model
+    # only once its own BlockCreated response arrives).
     page.click("button:text-is('Add Link')")
+    expect(page.locator(".preview-block-link")).to_have_count(1)
     page.click("button:text-is('Add Link')")
     expect(page.locator(".preview-block-link")).to_have_count(2)
 
@@ -145,4 +149,4 @@ def test_full_editor_flow_add_edit_switch_device_reorder_and_persist(
     # Reload and confirm both the edit and the reorder persisted.
     page.wait_for_timeout(700)
     page.reload()
-    expect(page.locator(".preview-block-link").first).not_to_contain_text("First link")
+    expect(page.locator(".preview-block-link").nth(1)).to_contain_text("First link")
