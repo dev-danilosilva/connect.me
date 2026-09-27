@@ -4553,44 +4553,7 @@ function _Http_track(router, xhr, tracker)
 			size: event.lengthComputable ? $elm$core$Maybe$Just(event.total) : $elm$core$Maybe$Nothing
 		}))));
 	});
-}
-
-
-var _Bitwise_and = F2(function(a, b)
-{
-	return a & b;
-});
-
-var _Bitwise_or = F2(function(a, b)
-{
-	return a | b;
-});
-
-var _Bitwise_xor = F2(function(a, b)
-{
-	return a ^ b;
-});
-
-function _Bitwise_complement(a)
-{
-	return ~a;
-};
-
-var _Bitwise_shiftLeftBy = F2(function(offset, a)
-{
-	return a << offset;
-});
-
-var _Bitwise_shiftRightBy = F2(function(offset, a)
-{
-	return a >> offset;
-});
-
-var _Bitwise_shiftRightZfBy = F2(function(offset, a)
-{
-	return a >>> offset;
-});
-var $elm$core$Basics$EQ = {$: 'EQ'};
+}var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$List$cons = _List_cons;
@@ -5385,8 +5348,6 @@ var $author$project$Main$Flags = F5(
 		return {apiBase: apiBase, csrfToken: csrfToken, handle: handle, pageId: pageId, title: title};
 	});
 var $elm$json$Json$Decode$decodeValue = _Json_run;
-var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
-var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
 var $author$project$Main$PageLoaded = function (a) {
 	return {$: 'PageLoaded', a: a};
 };
@@ -5410,6 +5371,8 @@ var $elm$http$Http$Sending = function (a) {
 	return {$: 'Sending', a: a};
 };
 var $elm$http$Http$Timeout_ = {$: 'Timeout_'};
+var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
 var $elm$core$Maybe$isJust = function (maybe) {
 	if (maybe.$ === 'Just') {
 		return true;
@@ -6310,7 +6273,7 @@ var $author$project$Main$init = function (flagsJson) {
 	if (_v0.$ === 'Ok') {
 		var flags = _v0.a;
 		return _Utils_Tuple2(
-			{device: $author$project$Main$Desktop, error: $elm$core$Maybe$Nothing, flags: flags, page: $elm$core$Maybe$Nothing, pendingSaves: $elm$core$Dict$empty},
+			{device: $author$project$Main$Desktop, error: $elm$core$Maybe$Nothing, flags: flags, page: $elm$core$Maybe$Nothing},
 			$author$project$Main$fetchPage(flags));
 	} else {
 		return _Utils_Tuple2(
@@ -6318,642 +6281,46 @@ var $author$project$Main$init = function (flagsJson) {
 				device: $author$project$Main$Desktop,
 				error: $elm$core$Maybe$Just('Couldn\u0027t read page configuration.'),
 				flags: A5($author$project$Main$Flags, 0, '', '', '', ''),
-				page: $elm$core$Maybe$Nothing,
-				pendingSaves: $elm$core$Dict$empty
+				page: $elm$core$Maybe$Nothing
 			},
 			$elm$core$Platform$Cmd$none);
 	}
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Main$Debounced = F2(
-	function (a, b) {
-		return {$: 'Debounced', a: a, b: b};
-	});
-var $elm$core$Maybe$andThen = F2(
-	function (callback, maybeValue) {
-		if (maybeValue.$ === 'Just') {
-			var value = maybeValue.a;
-			return callback(value);
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
-var $author$project$Main$BlockDeleted = F2(
-	function (a, b) {
-		return {$: 'BlockDeleted', a: a, b: b};
-	});
-var $elm$http$Http$expectBytesResponse = F2(
-	function (toMsg, toResult) {
-		return A3(
-			_Http_expect,
-			'arraybuffer',
-			_Http_toDataView,
-			A2($elm$core$Basics$composeR, toResult, toMsg));
-	});
-var $elm$http$Http$expectWhatever = function (toMsg) {
-	return A2(
-		$elm$http$Http$expectBytesResponse,
-		toMsg,
-		$elm$http$Http$resolve(
-			function (_v0) {
-				return $elm$core$Result$Ok(_Utils_Tuple0);
-			}));
-};
-var $elm$http$Http$Header = F2(
-	function (a, b) {
-		return {$: 'Header', a: a, b: b};
-	});
-var $elm$http$Http$header = $elm$http$Http$Header;
-var $author$project$Main$deleteBlock = F2(
-	function (flags, blockId) {
-		return $elm$http$Http$request(
-			{
-				body: $elm$http$Http$emptyBody,
-				expect: $elm$http$Http$expectWhatever(
-					$author$project$Main$BlockDeleted(blockId)),
-				headers: _List_fromArray(
-					[
-						A2($elm$http$Http$header, 'X-CSRFToken', flags.csrfToken)
-					]),
-				method: 'DELETE',
-				timeout: $elm$core$Maybe$Nothing,
-				tracker: $elm$core$Maybe$Nothing,
-				url: flags.apiBase + ('pages/' + (flags.handle + ('/blocks/' + ($elm$core$String$fromInt(blockId) + '/'))))
-			});
-	});
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var $elm$core$List$head = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return $elm$core$Maybe$Just(x);
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
-var $elm$core$Basics$ge = _Utils_ge;
-var $elm$core$Tuple$pair = F2(
-	function (a, b) {
-		return _Utils_Tuple2(a, b);
-	});
-var $elm$core$Array$fromListHelp = F3(
-	function (list, nodeList, nodeListSize) {
-		fromListHelp:
-		while (true) {
-			var _v0 = A2($elm$core$Elm$JsArray$initializeFromList, $elm$core$Array$branchFactor, list);
-			var jsArray = _v0.a;
-			var remainingItems = _v0.b;
-			if (_Utils_cmp(
-				$elm$core$Elm$JsArray$length(jsArray),
-				$elm$core$Array$branchFactor) < 0) {
-				return A2(
-					$elm$core$Array$builderToArray,
-					true,
-					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
-			} else {
-				var $temp$list = remainingItems,
-					$temp$nodeList = A2(
-					$elm$core$List$cons,
-					$elm$core$Array$Leaf(jsArray),
-					nodeList),
-					$temp$nodeListSize = nodeListSize + 1;
-				list = $temp$list;
-				nodeList = $temp$nodeList;
-				nodeListSize = $temp$nodeListSize;
-				continue fromListHelp;
-			}
-		}
-	});
-var $elm$core$Array$fromList = function (list) {
-	if (!list.b) {
-		return $elm$core$Array$empty;
-	} else {
-		return A3($elm$core$Array$fromListHelp, list, _List_Nil, 0);
-	}
-};
-var $elm$core$Bitwise$and = _Bitwise_and;
-var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
-var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
-var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
-var $elm$core$Array$getHelp = F3(
-	function (shift, index, tree) {
-		getHelp:
-		while (true) {
-			var pos = $elm$core$Array$bitMask & (index >>> shift);
-			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
-			if (_v0.$ === 'SubTree') {
-				var subTree = _v0.a;
-				var $temp$shift = shift - $elm$core$Array$shiftStep,
-					$temp$index = index,
-					$temp$tree = subTree;
-				shift = $temp$shift;
-				index = $temp$index;
-				tree = $temp$tree;
-				continue getHelp;
-			} else {
-				var values = _v0.a;
-				return A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, values);
-			}
-		}
-	});
-var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
-var $elm$core$Array$tailIndex = function (len) {
-	return (len >>> 5) << 5;
-};
-var $elm$core$Array$get = F2(
-	function (index, _v0) {
-		var len = _v0.a;
-		var startShift = _v0.b;
-		var tree = _v0.c;
-		var tail = _v0.d;
-		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? $elm$core$Maybe$Nothing : ((_Utils_cmp(
-			index,
-			$elm$core$Array$tailIndex(len)) > -1) ? $elm$core$Maybe$Just(
-			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
-			A3($elm$core$Array$getHelp, startShift, index, tree)));
-	});
-var $elm$core$Elm$JsArray$unsafeSet = _JsArray_unsafeSet;
-var $elm$core$Array$setHelp = F4(
-	function (shift, index, value, tree) {
-		var pos = $elm$core$Array$bitMask & (index >>> shift);
-		var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
-		if (_v0.$ === 'SubTree') {
-			var subTree = _v0.a;
-			var newSub = A4($elm$core$Array$setHelp, shift - $elm$core$Array$shiftStep, index, value, subTree);
-			return A3(
-				$elm$core$Elm$JsArray$unsafeSet,
-				pos,
-				$elm$core$Array$SubTree(newSub),
-				tree);
-		} else {
-			var values = _v0.a;
-			var newLeaf = A3($elm$core$Elm$JsArray$unsafeSet, $elm$core$Array$bitMask & index, value, values);
-			return A3(
-				$elm$core$Elm$JsArray$unsafeSet,
-				pos,
-				$elm$core$Array$Leaf(newLeaf),
-				tree);
-		}
-	});
-var $elm$core$Array$set = F3(
-	function (index, value, array) {
-		var len = array.a;
-		var startShift = array.b;
-		var tree = array.c;
-		var tail = array.d;
-		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? array : ((_Utils_cmp(
-			index,
-			$elm$core$Array$tailIndex(len)) > -1) ? A4(
-			$elm$core$Array$Array_elm_builtin,
-			len,
-			startShift,
-			tree,
-			A3($elm$core$Elm$JsArray$unsafeSet, $elm$core$Array$bitMask & index, value, tail)) : A4(
-			$elm$core$Array$Array_elm_builtin,
-			len,
-			startShift,
-			A4($elm$core$Array$setHelp, startShift, index, value, tree),
-			tail));
-	});
-var $author$project$Main$swapAt = F3(
-	function (i, j, list) {
-		var array = $elm$core$Array$fromList(list);
-		var vi = A2($elm$core$Array$get, i, array);
-		var vj = A2($elm$core$Array$get, j, array);
-		var _v0 = _Utils_Tuple2(vi, vj);
-		if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
-			var a = _v0.a.a;
-			var b = _v0.b.a;
-			return $elm$core$Array$toList(
-				A3(
-					$elm$core$Array$set,
-					j,
-					a,
-					A3($elm$core$Array$set, i, b, array)));
-		} else {
-			return list;
-		}
-	});
-var $author$project$Main$moveBlock = F3(
-	function (blockId, delta, blocks) {
-		var ids = A2(
-			$elm$core$List$map,
-			function ($) {
-				return $.id;
-			},
-			blocks);
-		var currentIndex = A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_v1, found) {
-					var index = _v1.a;
-					var id = _v1.b;
-					return _Utils_eq(id, blockId) ? $elm$core$Maybe$Just(index) : found;
-				}),
-			$elm$core$Maybe$Nothing,
-			A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, ids));
-		var newIndex = A2(
-			$elm$core$Maybe$map,
-			function (i) {
-				return i + delta;
-			},
-			currentIndex);
-		var _v0 = _Utils_Tuple2(currentIndex, newIndex);
-		if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
-			var from = _v0.a.a;
-			var to = _v0.b.a;
-			return ((to < 0) || (_Utils_cmp(
-				to,
-				$elm$core$List$length(blocks)) > -1)) ? blocks : A3($author$project$Main$swapAt, from, to, blocks);
-		} else {
-			return blocks;
-		}
-	});
-var $elm$core$Basics$neq = _Utils_notEqual;
-var $author$project$Main$Reordered = F2(
-	function (a, b) {
-		return {$: 'Reordered', a: a, b: b};
-	});
-var $elm$json$Json$Encode$int = _Json_wrap;
-var $elm$http$Http$jsonBody = function (value) {
-	return A2(
-		_Http_pair,
-		'application/json',
-		A2($elm$json$Json$Encode$encode, 0, value));
-};
-var $elm$json$Json$Encode$list = F2(
-	function (func, entries) {
-		return _Json_wrap(
-			A3(
-				$elm$core$List$foldl,
-				_Json_addEntry(func),
-				_Json_emptyArray(_Utils_Tuple0),
-				entries));
-	});
-var $elm$json$Json$Encode$object = function (pairs) {
-	return _Json_wrap(
-		A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_v0, obj) {
-					var k = _v0.a;
-					var v = _v0.b;
-					return A3(_Json_addField, k, v, obj);
-				}),
-			_Json_emptyObject(_Utils_Tuple0),
-			pairs));
-};
-var $author$project$Main$reorderBlocks = F3(
-	function (flags, previousBlocks, newBlocks) {
-		return $elm$http$Http$request(
-			{
-				body: $elm$http$Http$jsonBody(
-					$elm$json$Json$Encode$object(
-						_List_fromArray(
-							[
-								_Utils_Tuple2(
-								'block_ids',
-								A2(
-									$elm$json$Json$Encode$list,
-									function (b) {
-										return $elm$json$Json$Encode$int(b.id);
-									},
-									newBlocks))
-							]))),
-				expect: A2(
-					$elm$http$Http$expectJson,
-					$author$project$Main$Reordered(previousBlocks),
-					$author$project$Main$pageDecoder),
-				headers: _List_fromArray(
-					[
-						A2($elm$http$Http$header, 'X-CSRFToken', flags.csrfToken)
-					]),
-				method: 'POST',
-				timeout: $elm$core$Maybe$Nothing,
-				tracker: $elm$core$Maybe$Nothing,
-				url: flags.apiBase + ('pages/' + (flags.handle + '/blocks/reorder/'))
-			});
-	});
-var $author$project$Main$BlockSaved = F2(
-	function (a, b) {
-		return {$: 'BlockSaved', a: a, b: b};
-	});
-var $elm$json$Json$Encode$string = _Json_wrap;
-var $author$project$Main$contentEncoder = function (content) {
-	switch (content.$) {
-		case 'LinkContent':
-			var url = content.a.url;
-			var label = content.a.label;
-			return $elm$json$Json$Encode$object(
-				_List_fromArray(
-					[
-						_Utils_Tuple2(
-						'label',
-						$elm$json$Json$Encode$string(label)),
-						_Utils_Tuple2(
-						'url',
-						$elm$json$Json$Encode$string(url))
-					]));
-		case 'HeaderContent':
-			var avatarUrl = content.a.avatarUrl;
-			var bio = content.a.bio;
-			var displayName = content.a.displayName;
-			return $elm$json$Json$Encode$object(
-				_List_fromArray(
-					[
-						_Utils_Tuple2(
-						'display_name',
-						$elm$json$Json$Encode$string(displayName)),
-						_Utils_Tuple2(
-						'bio',
-						$elm$json$Json$Encode$string(bio)),
-						_Utils_Tuple2(
-						'avatar_url',
-						$elm$json$Json$Encode$string(avatarUrl))
-					]));
-		default:
-			var icons = content.a.icons;
-			return $elm$json$Json$Encode$object(
-				_List_fromArray(
-					[
-						_Utils_Tuple2(
-						'icons',
-						A2(
-							$elm$json$Json$Encode$list,
-							function (icon) {
-								return $elm$json$Json$Encode$object(
-									_List_fromArray(
-										[
-											_Utils_Tuple2(
-											'platform',
-											$elm$json$Json$Encode$string(icon.platform)),
-											_Utils_Tuple2(
-											'url',
-											$elm$json$Json$Encode$string(icon.url))
-										]));
-							},
-							icons))
-					]));
-	}
-};
-var $author$project$Main$saveBlock = F2(
-	function (flags, block) {
-		return $elm$http$Http$request(
-			{
-				body: $elm$http$Http$jsonBody(
-					$elm$json$Json$Encode$object(
-						_List_fromArray(
-							[
-								_Utils_Tuple2(
-								'data',
-								$author$project$Main$contentEncoder(block.content))
-							]))),
-				expect: A2(
-					$elm$http$Http$expectJson,
-					$author$project$Main$BlockSaved(block.id),
-					$author$project$Main$blockDecoder),
-				headers: _List_fromArray(
-					[
-						A2($elm$http$Http$header, 'X-CSRFToken', flags.csrfToken)
-					]),
-				method: 'PATCH',
-				timeout: $elm$core$Maybe$Nothing,
-				tracker: $elm$core$Maybe$Nothing,
-				url: flags.apiBase + ('pages/' + (flags.handle + ('/blocks/' + ($elm$core$String$fromInt(block.id) + '/'))))
-			});
-	});
-var $elm$core$Process$sleep = _Process_sleep;
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		switch (msg.$) {
-			case 'PageLoaded':
-				if (msg.a.$ === 'Ok') {
-					var pageData = msg.a.a;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								error: $elm$core$Maybe$Nothing,
-								page: $elm$core$Maybe$Just(pageData)
-							}),
-						$elm$core$Platform$Cmd$none);
-				} else {
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								error: $elm$core$Maybe$Just('Couldn\u0027t load this page. Try reloading.')
-							}),
-						$elm$core$Platform$Cmd$none);
-				}
-			case 'SetDevice':
-				var device = msg.a;
+		if (msg.$ === 'PageLoaded') {
+			if (msg.a.$ === 'Ok') {
+				var pageData = msg.a.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{device: device}),
+						{
+							error: $elm$core$Maybe$Nothing,
+							page: $elm$core$Maybe$Just(pageData)
+						}),
 					$elm$core$Platform$Cmd$none);
-			case 'EditBlock':
-				var blockId = msg.a;
-				var newContent = msg.b;
-				var updatedPage = A2(
-					$elm$core$Maybe$map,
-					function (p) {
-						return _Utils_update(
-							p,
-							{
-								blocks: A2(
-									$elm$core$List$map,
-									function (b) {
-										return _Utils_eq(b.id, blockId) ? _Utils_update(
-											b,
-											{content: newContent}) : b;
-									},
-									p.blocks)
-							});
-					},
-					model.page);
-				var nextGeneration = A2(
-					$elm$core$Maybe$withDefault,
-					0,
-					A2($elm$core$Dict$get, blockId, model.pendingSaves)) + 1;
+			} else {
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{
-							page: updatedPage,
-							pendingSaves: A3($elm$core$Dict$insert, blockId, nextGeneration, model.pendingSaves)
+							error: $elm$core$Maybe$Just('Couldn\u0027t load this page. Try reloading.')
 						}),
-					A2(
-						$elm$core$Task$perform,
-						function (_v1) {
-							return A2($author$project$Main$Debounced, blockId, nextGeneration);
-						},
-						$elm$core$Process$sleep(500)));
-			case 'Debounced':
-				var blockId = msg.a;
-				var generation = msg.b;
-				var currentGeneration = A2(
-					$elm$core$Maybe$withDefault,
-					0,
-					A2($elm$core$Dict$get, blockId, model.pendingSaves));
-				if (_Utils_eq(generation, currentGeneration)) {
-					var _v2 = A2(
-						$elm$core$Maybe$andThen,
-						function (p) {
-							return $elm$core$List$head(
-								A2(
-									$elm$core$List$filter,
-									function (b) {
-										return _Utils_eq(b.id, blockId);
-									},
-									p.blocks));
-						},
-						model.page);
-					if (_v2.$ === 'Just') {
-						var block = _v2.a;
-						return _Utils_Tuple2(
-							model,
-							A2($author$project$Main$saveBlock, model.flags, block));
-					} else {
-						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-					}
-				} else {
-					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-				}
-			case 'BlockSaved':
-				if (msg.b.$ === 'Ok') {
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{error: $elm$core$Maybe$Nothing}),
-						$elm$core$Platform$Cmd$none);
-				} else {
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								error: $elm$core$Maybe$Just('Couldn\u0027t save a change. Reload and try again.')
-							}),
-						$elm$core$Platform$Cmd$none);
-				}
-			case 'DeleteBlock':
-				var blockId = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{
-							page: A2(
-								$elm$core$Maybe$map,
-								function (p) {
-									return _Utils_update(
-										p,
-										{
-											blocks: A2(
-												$elm$core$List$filter,
-												function (b) {
-													return !_Utils_eq(b.id, blockId);
-												},
-												p.blocks)
-										});
-								},
-								model.page)
-						}),
-					A2($author$project$Main$deleteBlock, model.flags, blockId));
-			case 'BlockDeleted':
-				if (msg.b.$ === 'Ok') {
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{error: $elm$core$Maybe$Nothing}),
-						$elm$core$Platform$Cmd$none);
-				} else {
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								error: $elm$core$Maybe$Just('Couldn\u0027t delete that block. Reload to see the real state.')
-							}),
-						$elm$core$Platform$Cmd$none);
-				}
-			case 'MoveBlock':
-				var blockId = msg.a;
-				var delta = msg.b;
-				var _v3 = model.page;
-				if (_v3.$ === 'Just') {
-					var p = _v3.a;
-					var reordered = A3($author$project$Main$moveBlock, blockId, delta, p.blocks);
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								page: $elm$core$Maybe$Just(
-									_Utils_update(
-										p,
-										{blocks: reordered}))
-							}),
-						A3($author$project$Main$reorderBlocks, model.flags, p.blocks, reordered));
-				} else {
-					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-				}
-			default:
-				if (msg.b.$ === 'Ok') {
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{error: $elm$core$Maybe$Nothing}),
-						$elm$core$Platform$Cmd$none);
-				} else {
-					var previousBlocks = msg.a;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								error: $elm$core$Maybe$Just('Couldn\u0027t reorder blocks. Reverted.'),
-								page: A2(
-									$elm$core$Maybe$map,
-									function (p) {
-										return _Utils_update(
-											p,
-											{blocks: previousBlocks});
-									},
-									model.page)
-							}),
-						$elm$core$Platform$Cmd$none);
-				}
+					$elm$core$Platform$Cmd$none);
+			}
+		} else {
+			var device = msg.a;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{device: device}),
+				$elm$core$Platform$Cmd$none);
 		}
 	});
 var $elm$json$Json$Decode$value = _Json_decodeValue;
+var $elm$json$Json$Encode$string = _Json_wrap;
 var $elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
 		return A2(
@@ -6967,405 +6334,21 @@ var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Main$Phone = {$: 'Phone'};
 var $author$project$Main$Tablet = {$: 'Tablet'};
-var $author$project$Main$EditBlock = F2(
-	function (a, b) {
-		return {$: 'EditBlock', a: a, b: b};
-	});
-var $elm$html$Html$button = _VirtualDom_node('button');
-var $author$project$Main$DeleteBlock = function (a) {
-	return {$: 'DeleteBlock', a: a};
-};
-var $elm$html$Html$i = _VirtualDom_node('i');
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'click',
-		$elm$json$Json$Decode$succeed(msg));
-};
-var $author$project$Main$deleteButton = function (block) {
-	return A2(
-		$elm$html$Html$button,
-		_List_fromArray(
-			[
-				$elm$html$Html$Events$onClick(
-				$author$project$Main$DeleteBlock(block.id)),
-				$elm$html$Html$Attributes$class('delete-block-button')
-			]),
-		_List_fromArray(
-			[
-				A2(
-				$elm$html$Html$i,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('fa-solid fa-trash')
-					]),
-				_List_Nil)
-			]));
-};
-var $elm$html$Html$input = _VirtualDom_node('input');
-var $author$project$Main$MoveBlock = F2(
-	function (a, b) {
-		return {$: 'MoveBlock', a: a, b: b};
-	});
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var $author$project$Main$moveButtons = function (block) {
-	return _List_fromArray(
-		[
-			A2(
-			$elm$html$Html$button,
-			_List_fromArray(
-				[
-					$elm$html$Html$Events$onClick(
-					A2($author$project$Main$MoveBlock, block.id, -1))
-				]),
-			_List_fromArray(
-				[
-					A2(
-					$elm$html$Html$i,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$class('fa-solid fa-arrow-up')
-						]),
-					_List_Nil)
-				])),
-			A2(
-			$elm$html$Html$button,
-			_List_fromArray(
-				[
-					$elm$html$Html$Events$onClick(
-					A2($author$project$Main$MoveBlock, block.id, 1))
-				]),
-			_List_fromArray(
-				[
-					A2(
-					$elm$html$Html$i,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$class('fa-solid fa-arrow-down')
-						]),
-					_List_Nil)
-				]))
-		]);
-};
-var $elm$html$Html$Events$alwaysStop = function (x) {
-	return _Utils_Tuple2(x, true);
-};
-var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
-	return {$: 'MayStopPropagation', a: a};
-};
-var $elm$html$Html$Events$stopPropagationOn = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
-	});
-var $elm$json$Json$Decode$at = F2(
-	function (fields, decoder) {
-		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
-	});
-var $elm$html$Html$Events$targetValue = A2(
-	$elm$json$Json$Decode$at,
-	_List_fromArray(
-		['target', 'value']),
-	$elm$json$Json$Decode$string);
-var $elm$html$Html$Events$onInput = function (tagger) {
-	return A2(
-		$elm$html$Html$Events$stopPropagationOn,
-		'input',
-		A2(
-			$elm$json$Json$Decode$map,
-			$elm$html$Html$Events$alwaysStop,
-			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
-};
-var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
-var $elm$html$Html$textarea = _VirtualDom_node('textarea');
-var $author$project$Main$updateBlockContent = F4(
-	function (editLink, editHeader, editSocial, content) {
-		switch (content.$) {
-			case 'LinkContent':
-				var link = content.a;
-				return $author$project$Main$LinkContent(
-					editLink(link));
-			case 'HeaderContent':
-				var header = content.a;
-				return $author$project$Main$HeaderContent(
-					editHeader(header));
-			default:
-				var social = content.a;
-				return $author$project$Main$SocialIconsContent(
-					editSocial(social));
-		}
-	});
-var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $author$project$Main$viewBlockEditor = function (block) {
-	var _v0 = block.content;
-	switch (_v0.$) {
-		case 'LinkContent':
-			var link = _v0.a;
-			return A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('block-editor')
-					]),
-				_Utils_ap(
-					_List_fromArray(
-						[
-							A2(
-							$elm$html$Html$input,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$value(link.label),
-									$elm$html$Html$Events$onInput(
-									function (v) {
-										return A2(
-											$author$project$Main$EditBlock,
-											block.id,
-											A4(
-												$author$project$Main$updateBlockContent,
-												function (l) {
-													return _Utils_update(
-														l,
-														{label: v});
-												},
-												$elm$core$Basics$identity,
-												$elm$core$Basics$identity,
-												block.content));
-									})
-								]),
-							_List_Nil),
-							A2(
-							$elm$html$Html$input,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$value(link.url),
-									$elm$html$Html$Events$onInput(
-									function (v) {
-										return A2(
-											$author$project$Main$EditBlock,
-											block.id,
-											A4(
-												$author$project$Main$updateBlockContent,
-												function (l) {
-													return _Utils_update(
-														l,
-														{url: v});
-												},
-												$elm$core$Basics$identity,
-												$elm$core$Basics$identity,
-												block.content));
-									})
-								]),
-							_List_Nil),
-							$author$project$Main$deleteButton(block)
-						]),
-					$author$project$Main$moveButtons(block)));
-		case 'HeaderContent':
-			var header = _v0.a;
-			return A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('block-editor')
-					]),
-				_Utils_ap(
-					_List_fromArray(
-						[
-							A2(
-							$elm$html$Html$input,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$value(header.displayName),
-									$elm$html$Html$Events$onInput(
-									function (v) {
-										return A2(
-											$author$project$Main$EditBlock,
-											block.id,
-											A4(
-												$author$project$Main$updateBlockContent,
-												$elm$core$Basics$identity,
-												function (h) {
-													return _Utils_update(
-														h,
-														{displayName: v});
-												},
-												$elm$core$Basics$identity,
-												block.content));
-									})
-								]),
-							_List_Nil),
-							A2(
-							$elm$html$Html$textarea,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$value(header.bio),
-									$elm$html$Html$Events$onInput(
-									function (v) {
-										return A2(
-											$author$project$Main$EditBlock,
-											block.id,
-											A4(
-												$author$project$Main$updateBlockContent,
-												$elm$core$Basics$identity,
-												function (h) {
-													return _Utils_update(
-														h,
-														{bio: v});
-												},
-												$elm$core$Basics$identity,
-												block.content));
-									})
-								]),
-							_List_Nil),
-							$author$project$Main$deleteButton(block)
-						]),
-					$author$project$Main$moveButtons(block)));
-		default:
-			var social = _v0.a;
-			return A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('block-editor')
-					]),
-				_Utils_ap(
-					A2(
-						$elm$core$List$indexedMap,
-						F2(
-							function (index, icon) {
-								return A2(
-									$elm$html$Html$div,
-									_List_fromArray(
-										[
-											$elm$html$Html$Attributes$class('social-icon-row')
-										]),
-									_List_fromArray(
-										[
-											A2(
-											$elm$html$Html$input,
-											_List_fromArray(
-												[
-													$elm$html$Html$Attributes$value(icon.platform),
-													$elm$html$Html$Attributes$placeholder('platform (e.g. twitter)'),
-													$elm$html$Html$Events$onInput(
-													function (v) {
-														return A2(
-															$author$project$Main$EditBlock,
-															block.id,
-															A4(
-																$author$project$Main$updateBlockContent,
-																$elm$core$Basics$identity,
-																$elm$core$Basics$identity,
-																function (s) {
-																	return _Utils_update(
-																		s,
-																		{
-																			icons: A2(
-																				$elm$core$List$indexedMap,
-																				F2(
-																					function (i, ic) {
-																						return _Utils_eq(i, index) ? _Utils_update(
-																							ic,
-																							{platform: v}) : ic;
-																					}),
-																				s.icons)
-																		});
-																},
-																block.content));
-													})
-												]),
-											_List_Nil),
-											A2(
-											$elm$html$Html$input,
-											_List_fromArray(
-												[
-													$elm$html$Html$Attributes$value(icon.url),
-													$elm$html$Html$Events$onInput(
-													function (v) {
-														return A2(
-															$author$project$Main$EditBlock,
-															block.id,
-															A4(
-																$author$project$Main$updateBlockContent,
-																$elm$core$Basics$identity,
-																$elm$core$Basics$identity,
-																function (s) {
-																	return _Utils_update(
-																		s,
-																		{
-																			icons: A2(
-																				$elm$core$List$indexedMap,
-																				F2(
-																					function (i, ic) {
-																						return _Utils_eq(i, index) ? _Utils_update(
-																							ic,
-																							{url: v}) : ic;
-																					}),
-																				s.icons)
-																		});
-																},
-																block.content));
-													})
-												]),
-											_List_Nil)
-										]));
-							}),
-						social.icons),
-					_Utils_ap(
-						_List_fromArray(
-							[
-								A2(
-								$elm$html$Html$button,
-								_List_fromArray(
-									[
-										$elm$html$Html$Events$onClick(
-										A2(
-											$author$project$Main$EditBlock,
-											block.id,
-											A4(
-												$author$project$Main$updateBlockContent,
-												$elm$core$Basics$identity,
-												$elm$core$Basics$identity,
-												function (s) {
-													return _Utils_update(
-														s,
-														{
-															icons: _Utils_ap(
-																s.icons,
-																_List_fromArray(
-																	[
-																		A2($author$project$Main$SocialIcon, '', '')
-																	]))
-														});
-												},
-												block.content)))
-									]),
-								_List_fromArray(
-									[
-										$elm$html$Html$text('Add icon')
-									])),
-								$author$project$Main$deleteButton(block)
-							]),
-						$author$project$Main$moveButtons(block))));
-	}
-};
 var $author$project$Main$SetDevice = function (a) {
 	return {$: 'SetDevice', a: a};
 };
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
 var $elm$core$Tuple$second = function (_v0) {
 	var y = _v0.b;
 	return y;
@@ -7390,6 +6373,23 @@ var $author$project$Main$deviceLabel = function (device) {
 			return 'Phone';
 	}
 };
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
 var $author$project$Main$viewDeviceButton = F2(
 	function (current, device) {
 		return A2(
@@ -7413,47 +6413,27 @@ var $author$project$Main$viewDeviceButton = F2(
 					$author$project$Main$deviceLabel(device))
 				]));
 	});
-var $author$project$Main$viewControls = F2(
-	function (model, pageData) {
-		return A2(
-			$elm$html$Html$div,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('editor-controls-pane')
-				]),
-			_List_fromArray(
-				[
-					A2(
-					$elm$html$Html$div,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$class('device-switcher')
-						]),
-					_List_fromArray(
-						[
-							A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Desktop),
-							A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Tablet),
-							A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Phone)
-						])),
-					A2(
-					$elm$html$Html$div,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$class('block-list')
-						]),
-					A2($elm$core$List$map, $author$project$Main$viewBlockEditor, pageData.blocks))
-				]));
-	});
-var $author$project$Main$viewErrorBanner = function (message) {
+var $author$project$Main$viewControls = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$class('editor-error-banner')
+				$elm$html$Html$Attributes$class('editor-controls-pane')
 			]),
 		_List_fromArray(
 			[
-				$elm$html$Html$text(message)
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('device-switcher')
+					]),
+				_List_fromArray(
+					[
+						A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Desktop),
+						A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Tablet),
+						A2($author$project$Main$viewDeviceButton, model.device, $author$project$Main$Phone)
+					]))
 			]));
 };
 var $author$project$Main$deviceWidth = function (device) {
@@ -7466,8 +6446,19 @@ var $author$project$Main$deviceWidth = function (device) {
 			return $elm$core$Maybe$Just(390);
 	}
 };
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $elm$html$Html$i = _VirtualDom_node('i');
 var $author$project$Main$viewBlockPreview = function (block) {
 	var _v0 = block.content;
 	switch (_v0.$) {
@@ -7537,6 +6528,15 @@ var $author$project$Main$viewBlockPreview = function (block) {
 					icons));
 	}
 };
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
 var $author$project$Main$viewPreview = F2(
 	function (model, pageData) {
 		return A2(
@@ -7576,27 +6576,13 @@ var $author$project$Main$view = function (model) {
 			$elm$html$Html$div,
 			_List_fromArray(
 				[
-					$elm$html$Html$Attributes$class('editor-root')
+					$elm$html$Html$Attributes$class('editor-shell')
 				]),
-			A2(
-				$elm$core$List$filterMap,
-				$elm$core$Basics$identity,
-				_List_fromArray(
-					[
-						A2($elm$core$Maybe$map, $author$project$Main$viewErrorBanner, model.error),
-						$elm$core$Maybe$Just(
-						A2(
-							$elm$html$Html$div,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$class('editor-shell')
-								]),
-							_List_fromArray(
-								[
-									A2($author$project$Main$viewPreview, model, pageData),
-									A2($author$project$Main$viewControls, model, pageData)
-								])))
-					])));
+			_List_fromArray(
+				[
+					A2($author$project$Main$viewPreview, model, pageData),
+					$author$project$Main$viewControls(model)
+				]));
 	} else {
 		var _v1 = model.error;
 		if (_v1.$ === 'Just') {

@@ -17,22 +17,9 @@
   overflow-y: auto;
 }
 
-.editor-root {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
 .editor-shell {
   display: flex;
   width: 100%;
-}
-
-.editor-error-banner {
-  background: #fdecea;
-  border-bottom: 1px solid #c0392b;
-  color: #c0392b;
-  padding: 0.75rem 1.5rem;
 }
 
 .preview-frame {
@@ -61,33 +48,3 @@
   font-weight: 600;
 }
 
-.block-editor {
-  border: 1px solid #eee;
-  border-radius: 6px;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.social-icon-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.delete-block-button {
-  align-self: flex-end;
-  background: none;
-  border: none;
-  color: #c0392b;
-  cursor: pointer;
-}
-
-.block-editor > button:not(.delete-block-button) {
-  align-self: flex-end;
-  background: none;
-  border: none;
-  color: #555;
-  cursor: pointer;
-}
