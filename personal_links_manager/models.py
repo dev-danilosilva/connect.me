@@ -31,22 +31,3 @@ class LinkPage(models.Model):
         if not self.title:
             self.title = humanize_handle(self.handle)
         super().save(*args, **kwargs)
-
-
-class Block(models.Model):
-    class BlockType(models.TextChoices):
-        LINK = "link", "Link"
-        HEADER = "header", "Header"
-        SOCIAL_ICONS = "social_icons", "Social icons"
-
-    page = models.ForeignKey(LinkPage, on_delete=models.CASCADE, related_name="blocks")
-    block_type = models.CharField(max_length=20, choices=BlockType.choices)
-    position = models.PositiveIntegerField()
-    visible = models.BooleanField(default=True)
-    data = models.JSONField(default=dict)
-
-    class Meta:
-        ordering = ["position"]
-
-    def __str__(self):
-        return f"{self.block_type} block on {self.page.handle}"

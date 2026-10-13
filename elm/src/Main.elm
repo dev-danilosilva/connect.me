@@ -1,21 +1,15 @@
 module Main exposing
-    ( Block
-    , BlockContent(..)
-    , Device(..)
+    ( Device(..)
     , Flags
-    , PageData
-    , SocialIcon
-    , blockDecoder
     , deviceWidth
     , flagsDecoder
     , main
     )
 
 import Browser
-import Html exposing (Html, button, div, text)
-import Html.Attributes exposing (class, classList, style)
+import Html exposing (Html, a, button, div, h1, i, p, span, text)
+import Html.Attributes exposing (attribute, class, classList, href, style)
 import Html.Events exposing (onClick)
-import Http
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -36,87 +30,6 @@ flagsDecoder =
         (Decode.field "title" Decode.string)
         (Decode.field "csrfToken" Decode.string)
         (Decode.field "apiBase" Decode.string)
-
-
-type alias SocialIcon =
-    { platform : String, url : String }
-
-
-type BlockContent
-    = LinkContent { label : String, url : String }
-    | HeaderContent { displayName : String, bio : String, avatarUrl : String }
-    | SocialIconsContent { icons : List SocialIcon }
-
-
-type alias Block =
-    { id : Int
-    , position : Int
-    , visible : Bool
-    , content : BlockContent
-    }
-
-
-type alias PageData =
-    { id : Int
-    , handle : String
-    , title : String
-    , blocks : List Block
-    }
-
-
-socialIconDecoder : Decoder SocialIcon
-socialIconDecoder =
-    Decode.map2 SocialIcon
-        (Decode.field "platform" Decode.string)
-        (Decode.field "url" Decode.string)
-
-
-contentDecoder : String -> Decoder BlockContent
-contentDecoder blockType =
-    case blockType of
-        "link" ->
-            Decode.map2 (\label url -> LinkContent { label = label, url = url })
-                (Decode.field "label" Decode.string)
-                (Decode.field "url" Decode.string)
-
-        "header" ->
-            Decode.map3
-                (\displayName bio avatarUrl ->
-                    HeaderContent { displayName = displayName, bio = bio, avatarUrl = avatarUrl }
-                )
-                (Decode.field "display_name" Decode.string)
-                (Decode.oneOf [ Decode.field "bio" Decode.string, Decode.succeed "" ])
-                (Decode.oneOf [ Decode.field "avatar_url" Decode.string, Decode.succeed "" ])
-
-        "social_icons" ->
-            Decode.map (\icons -> SocialIconsContent { icons = icons })
-                (Decode.field "icons" (Decode.list socialIconDecoder))
-
-        _ ->
-            Decode.fail ("Unknown block_type: " ++ blockType)
-
-
-blockDecoder : Decoder Block
-blockDecoder =
-    Decode.field "block_type" Decode.string
-        |> Decode.andThen
-            (\blockType ->
-                Decode.map4
-                    (\id position visible content -> Block id position visible content)
-                    (Decode.field "id" Decode.int)
-                    (Decode.field "position" Decode.int)
-                    (Decode.field "visible" Decode.bool)
-                    (Decode.field "data" (contentDecoder blockType))
-            )
-
-
-pageDecoder : Decoder PageData
-pageDecoder =
-    Decode.map4 PageData
-        (Decode.field "id" Decode.int)
-        (Decode.field "handle" Decode.string)
-        (Decode.field "title" Decode.string)
-        (Decode.field "blocks" (Decode.list blockDecoder))
 
 
 type Device
@@ -140,52 +53,27 @@ deviceWidth device =
 
 type alias Model =
     { flags : Flags
-    , page : Maybe PageData
     , device : Device
-    , error : Maybe String
     }
 
 
 type Msg
-    = PageLoaded (Result Http.Error PageData)
-    | SetDevice Device
-
-
-fetchPage : Flags -> Cmd Msg
-fetchPage flags =
-    Http.get
-        { url = flags.apiBase ++ "pages/" ++ flags.handle ++ "/"
-        , expect = Http.expectJson PageLoaded pageDecoder
-        }
+    = SetDevice Device
 
 
 init : Decode.Value -> ( Model, Cmd Msg )
 init flagsJson =
     case Decode.decodeValue flagsDecoder flagsJson of
         Ok flags ->
-            ( { flags = flags, page = Nothing, device = Desktop, error = Nothing }
-            , fetchPage flags
-            )
+            ( { flags = flags, device = Desktop }, Cmd.none )
 
         Err _ ->
-            ( { flags = Flags 0 "" "" "" ""
-              , page = Nothing
-              , device = Desktop
-              , error = Just "Couldn't read page configuration."
-              }
-            , Cmd.none
-            )
+            ( { flags = Flags 0 "" "" "" "", device = Desktop }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PageLoaded (Ok pageData) ->
-            ( { model | page = Just pageData, error = Nothing }, Cmd.none )
-
-        PageLoaded (Err _) ->
-            ( { model | error = Just "Couldn't load this page. Try reloading." }, Cmd.none )
-
         SetDevice device ->
             ( { model | device = device }, Cmd.none )
 
@@ -196,7 +84,22 @@ viewDeviceButton current device =
         [ classList [ ( "device-button", True ), ( "device-button-active", current == device ) ]
         , onClick (SetDevice device)
         ]
-        [ text (deviceLabel device) ]
+        [ i [ class ("fa-solid " ++ deviceIcon device), attribute "aria-hidden" "true" ] []
+        , text (deviceLabel device)
+        ]
+
+
+deviceIcon : Device -> String
+deviceIcon device =
+    case device of
+        Desktop ->
+            "fa-desktop"
+
+        Tablet ->
+            "fa-tablet-screen-button"
+
+        Phone ->
+            "fa-mobile-screen-button"
 
 
 deviceLabel : Device -> String
@@ -212,58 +115,43 @@ deviceLabel device =
             "Phone"
 
 
-viewBlockPreview : Block -> Html Msg
-viewBlockPreview block =
-    case block.content of
-        LinkContent { label } ->
-            div [ class "preview-block preview-block-link" ] [ text label ]
-
-        HeaderContent { displayName, bio } ->
-            div [ class "preview-block preview-block-header" ]
-                [ div [ class "preview-header-name" ] [ text displayName ]
-                , div [ class "preview-header-bio" ] [ text bio ]
-                ]
-
-        SocialIconsContent { icons } ->
-            div [ class "preview-block preview-block-social" ]
-                (List.map (\icon -> Html.i [ class ("fa-brands fa-" ++ icon.platform) ] []) icons)
-
-
-viewPreview : Model -> PageData -> Html Msg
-viewPreview model pageData =
+viewPreview : Model -> Html Msg
+viewPreview model =
     div [ class "editor-preview-pane" ]
         [ div
             [ class "preview-frame"
             , style "width" (deviceWidth model.device |> Maybe.map (\w -> String.fromInt w ++ "px") |> Maybe.withDefault "100%")
             ]
-            (List.map viewBlockPreview pageData.blocks)
+            []
         ]
 
 
 viewControls : Model -> Html Msg
 viewControls model =
     div [ class "editor-controls-pane" ]
-        [ div [ class "device-switcher" ]
-            [ viewDeviceButton model.device Desktop
-            , viewDeviceButton model.device Tablet
-            , viewDeviceButton model.device Phone
+        [ a [ class "editor-back-link", href "/dashboard/" ]
+            [ i [ class "fa-solid fa-arrow-left", attribute "aria-hidden" "true" ] []
+            , span [] [ text "All pages" ]
+            ]
+        , div [ class "editor-header" ]
+            [ span [ class "dashboard-eyebrow" ] [ text "Editing page" ]
+            , h1 [ class "editor-title" ] [ text model.flags.title ]
+            , p [ class "editor-slug" ] [ text ("mylinks.app/" ++ model.flags.handle) ]
+            ]
+        , div [ class "editor-section" ]
+            [ span [ class "editor-section-label" ] [ text "Preview size" ]
+            , div [ class "device-switcher" ]
+                [ viewDeviceButton model.device Desktop
+                , viewDeviceButton model.device Tablet
+                , viewDeviceButton model.device Phone
+                ]
             ]
         ]
 
 
 view : Model -> Html Msg
 view model =
-    case model.page of
-        Just pageData ->
-            div [ class "editor-shell" ] [ viewPreview model pageData, viewControls model ]
-
-        Nothing ->
-            case model.error of
-                Just message ->
-                    div [ class "editor-error" ] [ text message ]
-
-                Nothing ->
-                    div [ class "editor-loading" ] [ text "Loading..." ]
+    div [ class "editor-shell" ] [ viewPreview model, viewControls model ]
 
 
 main : Program Decode.Value Model Msg

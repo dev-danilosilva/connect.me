@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from accounts.models import User
-from personal_links_manager.models import Block, LinkPage
+from personal_links_manager.models import LinkPage
 from personal_links_manager.utils import humanize_handle
 
 pytestmark = pytest.mark.django_db
@@ -52,29 +52,3 @@ def test_handle_regex_rejects_invalid_formats(owner, bad_handle):
     page = LinkPage(owner=owner, handle=bad_handle)
     with pytest.raises(ValidationError):
         page.full_clean()
-
-
-def test_block_data_defaults_to_empty_dict(owner):
-    page = LinkPage.objects.create(owner=owner, handle="page-with-blocks")
-    block = Block.objects.create(page=page, block_type=Block.BlockType.LINK, position=0)
-    assert block.data == {}
-
-
-def test_blocks_are_ordered_by_position(owner):
-    page = LinkPage.objects.create(owner=owner, handle="ordered-page")
-    second = Block.objects.create(
-        page=page, block_type=Block.BlockType.LINK, position=1,
-        data={"label": "b", "url": "https://b.example"},
-    )
-    first = Block.objects.create(
-        page=page, block_type=Block.BlockType.LINK, position=0,
-        data={"label": "a", "url": "https://a.example"},
-    )
-    assert list(page.blocks.all()) == [first, second]
-
-
-def test_deleting_page_cascades_to_its_blocks(owner):
-    page = LinkPage.objects.create(owner=owner, handle="cascade-page")
-    Block.objects.create(page=page, block_type=Block.BlockType.LINK, position=0)
-    page.delete()
-    assert Block.objects.count() == 0

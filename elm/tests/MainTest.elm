@@ -1,12 +1,11 @@
 module MainTest exposing
-    ( blockDecoderSuite
-    , deviceSuite
+    ( deviceSuite
     , suite
     )
 
 import Expect
 import Json.Decode as Decode
-import Main exposing (BlockContent(..), Device(..), blockDecoder, deviceWidth, flagsDecoder)
+import Main exposing (Device(..), deviceWidth, flagsDecoder)
 import Test exposing (Test, describe, test)
 
 
@@ -34,20 +33,4 @@ deviceSuite =
             \_ -> Expect.equal (Just 768) (deviceWidth Tablet)
         , test "Phone is 390px" <|
             \_ -> Expect.equal (Just 390) (deviceWidth Phone)
-        ]
-
-
-blockDecoderSuite : Test
-blockDecoderSuite =
-    describe "blockDecoder"
-        [ test "header block with missing bio and avatar_url still decodes, defaulting to empty strings" <|
-            \_ ->
-                let
-                    json =
-                        """{"block_type": "header", "id": 1, "position": 0, "visible": true, "data": {"display_name": "Jane"}}"""
-                in
-                Decode.decodeString blockDecoder json
-                    |> Result.map .content
-                    |> Expect.equal
-                        (Ok (HeaderContent { displayName = "Jane", bio = "", avatarUrl = "" }))
         ]

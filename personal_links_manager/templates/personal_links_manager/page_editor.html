@@ -7,6 +7,11 @@
 {% endblock %}
 {% block content %}
   <div id="editor-app-wrapper">
+    <div class="tile-backdrop">
+      <div class="tile-glow tile-glow-1"></div>
+      <div class="tile-glow tile-glow-2"></div>
+      <div class="tile-glow tile-glow-4"></div>
+    </div>
     <div id="elm-app"></div>
   </div>
   {{ elm_flags|json_script:"elm-flags" }}
