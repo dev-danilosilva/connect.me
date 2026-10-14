@@ -5168,21 +5168,23 @@ var $elm$core$Task$perform = F2(
 	});
 var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Main$Desktop = {$: 'Desktop'};
-var $author$project$Main$Flags = F5(
-	function (pageId, handle, title, csrfToken, apiBase) {
-		return {apiBase: apiBase, csrfToken: csrfToken, handle: handle, pageId: pageId, title: title};
+var $author$project$Main$Flags = F6(
+	function (pageId, handle, title, username, csrfToken, apiBase) {
+		return {apiBase: apiBase, csrfToken: csrfToken, handle: handle, pageId: pageId, title: title, username: username};
 	});
+var $author$project$Main$Phone = {$: 'Phone'};
 var $elm$json$Json$Decode$decodeValue = _Json_run;
 var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $elm$json$Json$Decode$map5 = _Json_map5;
+var $elm$json$Json$Decode$map6 = _Json_map6;
 var $elm$json$Json$Decode$string = _Json_decodeString;
-var $author$project$Main$flagsDecoder = A6(
-	$elm$json$Json$Decode$map5,
+var $author$project$Main$flagsDecoder = A7(
+	$elm$json$Json$Decode$map6,
 	$author$project$Main$Flags,
 	A2($elm$json$Json$Decode$field, 'pageId', $elm$json$Json$Decode$int),
 	A2($elm$json$Json$Decode$field, 'handle', $elm$json$Json$Decode$string),
 	A2($elm$json$Json$Decode$field, 'title', $elm$json$Json$Decode$string),
+	A2($elm$json$Json$Decode$field, 'username', $elm$json$Json$Decode$string),
 	A2($elm$json$Json$Decode$field, 'csrfToken', $elm$json$Json$Decode$string),
 	A2($elm$json$Json$Decode$field, 'apiBase', $elm$json$Json$Decode$string));
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
@@ -5192,13 +5194,13 @@ var $author$project$Main$init = function (flagsJson) {
 	if (_v0.$ === 'Ok') {
 		var flags = _v0.a;
 		return _Utils_Tuple2(
-			{device: $author$project$Main$Desktop, flags: flags},
+			{device: $author$project$Main$Phone, flags: flags},
 			$elm$core$Platform$Cmd$none);
 	} else {
 		return _Utils_Tuple2(
 			{
 				device: $author$project$Main$Desktop,
-				flags: A5($author$project$Main$Flags, 0, '', '', '', '')
+				flags: A6($author$project$Main$Flags, 0, '', '', '', '', '')
 			},
 			$elm$core$Platform$Cmd$none);
 	}
@@ -5225,8 +5227,11 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 	});
 var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $elm$html$Html$div = _VirtualDom_node('div');
-var $author$project$Main$Phone = {$: 'Phone'};
 var $author$project$Main$Tablet = {$: 'Tablet'};
+var $elm$html$Html$h1 = _VirtualDom_node('h1');
+var $elm$html$Html$p = _VirtualDom_node('p');
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$html$Html$a = _VirtualDom_node('a');
 var $elm$virtual_dom$VirtualDom$attribute = F2(
 	function (key, value) {
@@ -5236,7 +5241,6 @@ var $elm$virtual_dom$VirtualDom$attribute = F2(
 			_VirtualDom_noJavaScriptOrHtmlUri(value));
 	});
 var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
-var $elm$html$Html$h1 = _VirtualDom_node('h1');
 var $elm$html$Html$Attributes$href = function (url) {
 	return A2(
 		$elm$html$Html$Attributes$stringProperty,
@@ -5244,10 +5248,114 @@ var $elm$html$Html$Attributes$href = function (url) {
 		_VirtualDom_noJavaScriptUri(url));
 };
 var $elm$html$Html$i = _VirtualDom_node('i');
-var $elm$html$Html$p = _VirtualDom_node('p');
-var $elm$html$Html$span = _VirtualDom_node('span');
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $elm$html$Html$li = _VirtualDom_node('li');
+var $elm$html$Html$nav = _VirtualDom_node('nav');
+var $elm$html$Html$ol = _VirtualDom_node('ol');
+var $author$project$Main$viewBreadcrumbs = function (flags) {
+	var separator = A2(
+		$elm$html$Html$li,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('breadcrumb-separator'),
+				A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$i,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('fa-solid fa-chevron-right')
+					]),
+				_List_Nil)
+			]));
+	return A2(
+		$elm$html$Html$nav,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('editor-breadcrumbs'),
+				A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Breadcrumb')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$ol,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$li,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('breadcrumb-home')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$a,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$href('/'),
+										A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Home')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$i,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('fa-solid fa-house'),
+												A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+											]),
+										_List_Nil)
+									]))
+							])),
+						separator,
+						A2(
+						$elm$html$Html$li,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('breadcrumb-item')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(flags.username)
+							])),
+						separator,
+						A2(
+						$elm$html$Html$li,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('breadcrumb-item')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$a,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$href('/dashboard/')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Pages')
+									]))
+							])),
+						separator,
+						A2(
+						$elm$html$Html$li,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('breadcrumb-item breadcrumb-current'),
+								A2($elm$html$Html$Attributes$attribute, 'aria-current', 'page')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(flags.title)
+							]))
+					]))
+			]));
+};
 var $author$project$Main$SetDevice = function (a) {
 	return {$: 'SetDevice', a: a};
 };
@@ -5355,31 +5463,7 @@ var $author$project$Main$viewControls = function (model) {
 			]),
 		_List_fromArray(
 			[
-				A2(
-				$elm$html$Html$a,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('editor-back-link'),
-						$elm$html$Html$Attributes$href('/dashboard/')
-					]),
-				_List_fromArray(
-					[
-						A2(
-						$elm$html$Html$i,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('fa-solid fa-arrow-left'),
-								A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
-							]),
-						_List_Nil),
-						A2(
-						$elm$html$Html$span,
-						_List_Nil,
-						_List_fromArray(
-							[
-								$elm$html$Html$text('All pages')
-							]))
-					])),
+				$author$project$Main$viewBreadcrumbs(model.flags),
 				A2(
 				$elm$html$Html$div,
 				_List_fromArray(
@@ -5388,16 +5472,6 @@ var $author$project$Main$viewControls = function (model) {
 					]),
 				_List_fromArray(
 					[
-						A2(
-						$elm$html$Html$span,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('dashboard-eyebrow')
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text('Editing page')
-							])),
 						A2(
 						$elm$html$Html$h1,
 						_List_fromArray(
@@ -5417,25 +5491,6 @@ var $author$project$Main$viewControls = function (model) {
 						_List_fromArray(
 							[
 								$elm$html$Html$text('mylinks.app/' + model.flags.handle)
-							]))
-					])),
-				A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('editor-section')
-					]),
-				_List_fromArray(
-					[
-						A2(
-						$elm$html$Html$span,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('editor-section-label')
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text('Preview size')
 							])),
 						A2(
 						$elm$html$Html$div,

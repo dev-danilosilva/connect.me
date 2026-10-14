@@ -50,6 +50,7 @@ def page_editor(request, handle):
             "pageId": page.id,
             "handle": page.handle,
             "title": page.title,
+            "username": request.user.display_name or request.user.email,
             "csrfToken": get_token(request),
             "apiBase": "/api/",
         },

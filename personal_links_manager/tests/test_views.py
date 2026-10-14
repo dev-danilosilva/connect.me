@@ -147,6 +147,28 @@ def test_page_editor_renders_for_owner(client, user):
     assert 'id="elm-app"' in response.content.decode()
 
 
+def test_page_editor_passes_the_owners_display_name_as_username(client, user):
+    user.display_name = "Ada Lovelace"
+    user.save()
+    LinkPage.objects.create(owner=user, handle="named-page")
+    client.force_login(user)
+
+    response = client.get(reverse("page_editor", args=["named-page"]))
+
+    assert response.context["elm_flags"]["username"] == "Ada Lovelace"
+
+
+def test_page_editor_falls_back_to_email_when_display_name_is_blank(client, user):
+    user.display_name = ""
+    user.save()
+    LinkPage.objects.create(owner=user, handle="unnamed-page")
+    client.force_login(user)
+
+    response = client.get(reverse("page_editor", args=["unnamed-page"]))
+
+    assert response.context["elm_flags"]["username"] == user.email
+
+
 def test_page_editor_404s_for_non_owner(client, user):
     other = User.objects.create_user(email="other4@example.com", password="password123")
     LinkPage.objects.create(owner=other, handle="not-yours")

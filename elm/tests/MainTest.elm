@@ -16,7 +16,7 @@ suite =
             \_ ->
                 let
                     json =
-                        """{"pageId": 1, "handle": "my-page", "title": "My Page", "csrfToken": "abc123", "apiBase": "/api/"}"""
+                        """{"pageId": 1, "handle": "my-page", "title": "My Page", "username": "Ada", "csrfToken": "abc123", "apiBase": "/api/"}"""
                 in
                 Decode.decodeString flagsDecoder json
                     |> Result.map .handle

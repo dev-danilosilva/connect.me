@@ -7,7 +7,7 @@ module Main exposing
     )
 
 import Browser
-import Html exposing (Html, a, button, div, h1, i, p, span, text)
+import Html exposing (Html, a, button, div, h1, i, li, nav, ol, p, span, text)
 import Html.Attributes exposing (attribute, class, classList, href, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode exposing (Decoder)
@@ -17,6 +17,7 @@ type alias Flags =
     { pageId : Int
     , handle : String
     , title : String
+    , username : String
     , csrfToken : String
     , apiBase : String
     }
@@ -24,10 +25,11 @@ type alias Flags =
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    Decode.map5 Flags
+    Decode.map6 Flags
         (Decode.field "pageId" Decode.int)
         (Decode.field "handle" Decode.string)
         (Decode.field "title" Decode.string)
+        (Decode.field "username" Decode.string)
         (Decode.field "csrfToken" Decode.string)
         (Decode.field "apiBase" Decode.string)
 
@@ -65,10 +67,10 @@ init : Decode.Value -> ( Model, Cmd Msg )
 init flagsJson =
     case Decode.decodeValue flagsDecoder flagsJson of
         Ok flags ->
-            ( { flags = flags, device = Desktop }, Cmd.none )
+            ( { flags = flags, device = Phone }, Cmd.none )
 
         Err _ ->
-            ( { flags = Flags 0 "" "" "" "", device = Desktop }, Cmd.none )
+            ( { flags = Flags 0 "" "" "" "" "", device = Desktop }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -129,17 +131,10 @@ viewPreview model =
 viewControls : Model -> Html Msg
 viewControls model =
     div [ class "editor-controls-pane" ]
-        [ a [ class "editor-back-link", href "/dashboard/" ]
-            [ i [ class "fa-solid fa-arrow-left", attribute "aria-hidden" "true" ] []
-            , span [] [ text "All pages" ]
-            ]
+        [ viewBreadcrumbs model.flags
         , div [ class "editor-header" ]
-            [ span [ class "dashboard-eyebrow" ] [ text "Editing page" ]
-            , h1 [ class "editor-title" ] [ text model.flags.title ]
+            [ h1 [ class "editor-title" ] [ text model.flags.title ]
             , p [ class "editor-slug" ] [ text ("mylinks.app/" ++ model.flags.handle) ]
-            ]
-        , div [ class "editor-section" ]
-            [ span [ class "editor-section-label" ] [ text "Preview size" ]
             , div [ class "device-switcher" ]
                 [ viewDeviceButton model.device Desktop
                 , viewDeviceButton model.device Tablet
@@ -149,9 +144,35 @@ viewControls model =
         ]
 
 
+viewBreadcrumbs : Flags -> Html Msg
+viewBreadcrumbs flags =
+    let
+        separator =
+            li [ class "breadcrumb-separator", attribute "aria-hidden" "true" ]
+                [ i [ class "fa-solid fa-chevron-right" ] [] ]
+    in
+    nav [ class "editor-breadcrumbs", attribute "aria-label" "Breadcrumb" ]
+        [ ol []
+            [ li [ class "breadcrumb-home" ]
+                [ a [ href "/", attribute "aria-label" "Home" ]
+                    [ i [ class "fa-solid fa-house", attribute "aria-hidden" "true" ] [] ]
+                ]
+            , separator
+            , li [ class "breadcrumb-item" ] [ text flags.username ]
+            , separator
+            , li [ class "breadcrumb-item" ] [ a [ href "/dashboard/" ] [ text "Pages" ] ]
+            , separator
+            , li [ class "breadcrumb-item breadcrumb-current", attribute "aria-current" "page" ] [ text flags.title ]
+            ]
+        ]
+
 view : Model -> Html Msg
 view model =
-    div [ class "editor-shell" ] [ viewPreview model, viewControls model ]
+    div [ class "editor-shell"
+        ]
+        [ viewPreview model
+        , viewControls model
+        ]
 
 
 main : Program Decode.Value Model Msg
