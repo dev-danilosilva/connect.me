@@ -32,7 +32,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # ---- Runtime stage: minimal image, no build tools ----
-FROM python:3.12-slim
+FROM python:3.12-slim AS web
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -62,3 +62,16 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/admin/login/')"
 
 ENTRYPOINT ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn linktree_project.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --access-logfile - --error-logfile -"]
+
+# ---- nginx stage: reverse proxy with this build's static files baked in ----
+# Baking the files in (rather than sharing a volume with `web`) means every
+# deploy serves exactly the static files it was built with: a named volume is
+# only filled from the image while empty, so it would keep serving the first
+# deploy's CSS/JS forever. This is the last stage, so build `web` explicitly
+# with `--target web` (docker-compose.prod.yml sets the target for both).
+FROM nginx:1.27-alpine AS nginx
+
+COPY --from=web /app/staticfiles /app/staticfiles
+
+# Reload nginx periodically so renewed Let's Encrypt certificates are picked up.
+COPY nginx-reload-certs.sh /docker-entrypoint.d/40-reload-certs.sh

@@ -1,32 +1,42 @@
 # Deployment
 
-This project ships two separate Docker setups: one for local development and one for production. They deliberately don't share a compose file — the dev setup optimizes for fast iteration, the prod setup for security and reliability.
+This project ships two separate Docker setups: one for local development (Postgres in Docker, Django in a local virtualenv) and one for production. They deliberately don't share a compose file — the dev setup optimizes for fast iteration, the prod setup for security and reliability.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Dev image. Installs deps, no build optimizations. |
-| `docker-compose.yml` | Dev stack: `web` (bind-mounted source, `runserver`, auto-reload) + `db`. |
-| `Dockerfile.prod` | Multi-stage prod image. Compiles the Elm page editor with `--optimize` in a Node stage (the bundle isn't in git, so every build compiles it), then a final image with no compilers/dev headers, run as a non-root user, with `collectstatic` output baked in, served via Gunicorn. |
-| `docker-compose.prod.yml` | Prod stack: `db` + `web` (Gunicorn, no ports exposed to the host) + `nginx` (reverse proxy + TLS termination) + `certbot` (auto-renewal). |
+| `Dockerfile` | Dev image for the optional `full-docker` profile. Installs deps and the `elm` binary, no build optimizations. |
+| `docker-compose.yml` | Dev stack: `db` (always) + `web` (only with `--profile full-docker`: bind-mounted source, `runserver`, auto-reload). |
+| `Dockerfile.prod` | Multi-stage prod build with two targets. `web`: compiles the Elm page editor with `--optimize` in a Node stage (the bundle isn't in git, so every build compiles it), runs `collectstatic`, and produces an image with no compilers/dev headers that runs Gunicorn as a non-root user. `nginx`: `nginx:1.27-alpine` with that build's `collectstatic` output and `nginx-reload-certs.sh` copied in. |
+| `docker-compose.prod.yml` | Prod stack: `db` + `web` (Gunicorn, no ports exposed to the host) + `nginx` (reverse proxy, TLS termination, serves `/static/`) + `certbot` (auto-renewal). |
+| `nginx-reload-certs.sh` | Built into the `nginx` image; reloads nginx periodically so renewed certificates are served. |
 | `nginx.conf.template` | nginx config, templated with `${DOMAIN}` at container start. |
 | `init-letsencrypt.sh` | One-time script to bootstrap Let's Encrypt certificates. |
 | `.env.example` | Reference for every environment variable used by both stacks. |
-| `k8s/linktree.yaml` | Kubernetes manifest: Postgres (Deployment + PVC) and the app pod (Gunicorn + nginx sidecar serving `/static/`). Generated with `podman kube generate`, then hand-edited. |
 
 ## Local development
 
+Development uses a mixed setup: **Postgres runs in Docker** and **Django runs from a local virtualenv**. The full steps are in the [README](../README.md#development-environment).
+
 ```bash
 cp .env.example .env   # defaults work out of the box for local dev
-docker compose up --build
+docker compose up -d db
+source venv/bin/activate
+python manage.py migrate
+python manage.py runserver
 ```
 
 - App: http://localhost:8000
-- Postgres: exposed on `localhost:5432` for connecting with a local client
-- Source is bind-mounted into the container — edits to the code are picked up immediately by `runserver`, no rebuild needed (only rebuild after changing `requirements.txt`)
-- `runserver` also compiles the Elm page editor in debug mode and recompiles it on every change to `elm/` (the image ships the `elm` binary); this needs `DEBUG=True` in `.env`
-- Migrations run automatically on container start
+- Postgres: exposed on `localhost:5432`, matching `POSTGRES_HOST=localhost` in `.env.example`
+- `runserver` also compiles the Elm page editor in debug mode and recompiles it on every change to `elm/`; this needs `DEBUG=True` in `.env` and the `elm` binary on your `PATH`
+- Django serves static files itself in dev (`DEBUG=True`); nginx is only part of the production stack
+
+If you want to run everything in Docker instead (for example, to check behavior closer to production), use the `full-docker` profile. It runs `web` from the dev `Dockerfile`, bind-mounts the source, and runs migrations on start:
+
+```bash
+docker compose --profile full-docker up --build
+```
 
 ## Production
 
@@ -73,7 +83,11 @@ Consider testing against Let's Encrypt's staging environment first (add `--stagi
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-This brings up `db`, `web` (migrations run automatically on start, static files are already baked into the image via `collectstatic`), `nginx`, and `certbot` (which renews the certificate automatically every 12 hours when needed).
+This brings up `db`, `web` (migrations run automatically on start), `nginx`, and `certbot`. Every 12 hours `certbot` checks the certificate and renews it once it's within 30 days of expiry.
+
+nginx keeps the certificate it loaded in memory, so the `nginx` image reloads nginx every 6 hours (`nginx-reload-certs.sh`) to pick up a renewed certificate. The reload is graceful: in-flight requests finish on the old workers. To change the interval, set `NGINX_RELOAD_INTERVAL` (seconds) on the `nginx` service.
+
+nginx serves `/static/` from files built into its own image (the `nginx` target of `Dockerfile.prod`) and proxies everything else to Gunicorn. No volume is shared with `web`, so every `up -d --build` serves exactly the static files that build produced. A shared named volume would keep serving the first deploy's CSS/JS, because Docker only fills a named volume from the image while the volume is empty.
 
 ### Common operations
 
@@ -92,30 +106,13 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 # Force a certificate renewal check manually
 docker compose -f docker-compose.prod.yml exec certbot certbot renew
+
+# Load a renewed certificate into nginx now, instead of at the next scheduled reload
 docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
-
-## Kubernetes
-
-`k8s/linktree.yaml` runs the same production image on a cluster:
-
-- `linktree-db`: Postgres 16 with a 5Gi PVC, exposed in-cluster on the `linktree-db` Service.
-- `linktree-web`: an init container copies the image's baked-in `collectstatic` output into an `emptyDir`; nginx (config in the `linktree-nginx` ConfigMap) serves `/static/` from it and proxies everything else to Gunicorn on `127.0.0.1:8000` in the same pod. Exposed on the `linktree-web` Service, port 80.
-- TLS is not handled in the pod. Put an Ingress or load balancer in front of `linktree-web`, and have it set `X-Forwarded-Proto`.
-
-Before applying:
-
-```bash
-podman build -f Dockerfile.prod -t <registry>/linktree:<tag> .
-podman push <registry>/linktree:<tag>
-```
-
-Then edit `k8s/linktree.yaml`: replace both `localhost/linktree:latest` references with that image, set real values in the `linktree` Secret, and set `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` for your domain. Then run `kubectl apply -f k8s/linktree.yaml`.
-
-The manifest started as `podman kube generate --type deployment --service linktree-db linktree-web`, run against local pods that had the same containers. Podman's output needed manual fixes: it drops podman secrets, emits a hostPath for the nginx config, turns named volumes into undeclared PVCs, and leaves the db Service without a port. To try it locally with `podman kube play`, change `POSTGRES_HOST` to `linktree-db-pod`, because podman ignores Services.
 
 ## Known gaps
 
 - No automated database backup/restore is set up — `postgres_data` is a local Docker volume with no offsite replication.
 - No CI/CD pipeline; deployment above is manual.
-- HTTP security headers beyond TLS (HSTS, CSP, etc.) are not configured.
+- Content-Security-Policy and similar headers are not configured. HSTS is: when `DEBUG=False`, Django sends `Strict-Transport-Security` for 30 days with `includeSubDomains` and `preload` (`linktree_project/settings.py`). HSTS is hard to undo once browsers have cached it, and even harder once the domain is on the preload list. Before raising `SECURE_HSTS_SECONDS` or submitting the domain for preload, make sure every subdomain serves HTTPS.
