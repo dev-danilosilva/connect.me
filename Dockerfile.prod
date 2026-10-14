@@ -2,6 +2,12 @@
 # The bundle isn't committed; every image build compiles it from elm/.
 FROM node:24-slim AS elm-builder
 
+# The slim image has no CA bundle, and `elm make` needs HTTPS to fetch
+# packages from package.elm-lang.org.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN npm install -g elm@0.19.2-0
 
 WORKDIR /elm
@@ -30,6 +36,7 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PYTHONUSERBASE=/home/django/.local \
     PATH=/home/django/.local/bin:$PATH
 
 RUN addgroup --system django && adduser --system --ingroup django django
@@ -44,7 +51,10 @@ RUN mkdir -p /app/staticfiles && chown django:django /app/staticfiles
 
 USER django
 
-RUN python manage.py collectstatic --noinput
+# Settings refuse to load without SECRET_KEY when DEBUG=False. collectstatic
+# never signs anything, so give it a throwaway key scoped to this one command;
+# the real key is only provided at runtime.
+RUN SECRET_KEY=collectstatic-build-only python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
