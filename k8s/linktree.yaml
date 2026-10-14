@@ -1,0 +1,250 @@
+# Generated with `podman kube generate --type deployment --service linktree-db linktree-web`
+# (podman 4.9.3) from locally built pods (see docs/deployment.md), then hand-edited
+# where podman's output doesn't translate to a real cluster:
+#   - podman secrets -> Secret + secretKeyRef (podman drops them on export)
+#   - bind-mounted nginx.conf -> ConfigMap (podman emits a hostPath)
+#   - named static volume -> emptyDir filled by the init container
+#   - Postgres volume -> declared PVC; db Service gets its port, ClusterIP
+#   - Postgres as a single-replica Recreate deployment (one writer on the PVC)
+#
+# Before applying: push the image built from Dockerfile.prod somewhere the
+# cluster can pull from and replace `localhost/linktree:latest`, set real
+# values in the Secret, and set ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: linktree
+  labels:
+    app: linktree
+type: Opaque
+stringData:
+  SECRET_KEY: change-me
+  POSTGRES_PASSWORD: change-me
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linktree-nginx
+  labels:
+    app: linktree
+data:
+  default.conf: |
+    # Gunicorn runs in the same pod, so it's reachable on localhost. TLS is
+    # terminated upstream (Ingress / load balancer), which must set
+    # X-Forwarded-Proto for Django's SECURE_PROXY_SSL_HEADER.
+    upstream django {
+        server 127.0.0.1:8000;
+    }
+
+    map $http_x_forwarded_proto $forwarded_proto {
+        default $http_x_forwarded_proto;
+        ''      $scheme;
+    }
+
+    server {
+        listen 8080;
+        server_name _;
+
+        client_max_body_size 20M;
+
+        location /static/ {
+            alias /app/staticfiles/;
+            expires 7d;
+            access_log off;
+        }
+
+        location / {
+            proxy_pass http://django;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        }
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: linktree-postgres-data
+  labels:
+    app: linktree-db
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: linktree-db
+  name: linktree-db
+spec:
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: linktree-db
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: linktree-web
+  name: linktree-web
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: linktree-web
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: linktree-db
+  name: linktree-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: linktree-db
+  template:
+    metadata:
+      labels:
+        app: linktree-db
+    spec:
+      containers:
+      - args:
+        - postgres
+        env:
+        - name: POSTGRES_USER
+          value: linktree
+        - name: POSTGRES_DB
+          value: linktree
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: linktree
+              key: POSTGRES_PASSWORD
+        # The volume root has lost+found on most storage classes, which
+        # initdb refuses; use a subdirectory.
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        image: docker.io/library/postgres:16-alpine
+        name: postgres
+        ports:
+        - containerPort: 5432
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "linktree"]
+          periodSeconds: 5
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-data
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: linktree-postgres-data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: linktree-web
+  name: linktree-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: linktree-web
+  template:
+    metadata:
+      labels:
+        app: linktree-web
+    spec:
+      initContainers:
+      # The image bakes collectstatic output into /app/staticfiles; copy it
+      # into a volume the nginx sidecar can read.
+      - args:
+        - -c
+        - cp -r /app/staticfiles/. /static/
+        command:
+        - sh
+        image: localhost/linktree:latest
+        name: collect-static
+        volumeMounts:
+        - mountPath: /static
+          name: static
+      containers:
+      - env:
+        - name: DEBUG
+          value: "False"
+        - name: ALLOWED_HOSTS
+          value: localhost,127.0.0.1
+        - name: CSRF_TRUSTED_ORIGINS
+          value: http://localhost:8080
+        - name: GUNICORN_WORKERS
+          value: "3"
+        - name: POSTGRES_USER
+          value: linktree
+        - name: POSTGRES_DB
+          value: linktree
+        - name: POSTGRES_HOST
+          value: linktree-db
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: linktree
+              key: SECRET_KEY
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: linktree
+              key: POSTGRES_PASSWORD
+        image: localhost/linktree:latest
+        name: web
+        ports:
+        - containerPort: 8000
+      - args:
+        - nginx
+        - -g
+        - daemon off;
+        image: docker.io/library/nginx:1.27-alpine
+        name: nginx
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /admin/login/
+            port: 8080
+            # The default Host is the pod IP, which ALLOWED_HOSTS rejects.
+            httpHeaders:
+            - name: Host
+              value: localhost
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d/default.conf
+          name: nginx-conf
+          subPath: default.conf
+          readOnly: true
+        - mountPath: /app/staticfiles
+          name: static
+          readOnly: true
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: linktree-nginx
+      - name: static
+        emptyDir: {}

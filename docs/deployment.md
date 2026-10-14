@@ -13,6 +13,7 @@ This project ships two separate Docker setups: one for local development and one
 | `nginx.conf.template` | nginx config, templated with `${DOMAIN}` at container start. |
 | `init-letsencrypt.sh` | One-time script to bootstrap Let's Encrypt certificates. |
 | `.env.example` | Reference for every environment variable used by both stacks. |
+| `k8s/linktree.yaml` | Kubernetes manifest: Postgres (Deployment + PVC) and the app pod (Gunicorn + nginx sidecar serving `/static/`). Generated with `podman kube generate`, then hand-edited. |
 
 ## Local development
 
@@ -93,6 +94,25 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec certbot certbot renew
 docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
+
+## Kubernetes
+
+`k8s/linktree.yaml` runs the same production image on a cluster:
+
+- `linktree-db`: Postgres 16 with a 5Gi PVC, exposed in-cluster on the `linktree-db` Service.
+- `linktree-web`: an init container copies the image's baked-in `collectstatic` output into an `emptyDir`; nginx (config in the `linktree-nginx` ConfigMap) serves `/static/` from it and proxies everything else to Gunicorn on `127.0.0.1:8000` in the same pod. Exposed on the `linktree-web` Service, port 80.
+- TLS is not handled in the pod. Put an Ingress or load balancer in front of `linktree-web`, and have it set `X-Forwarded-Proto`.
+
+Before applying:
+
+```bash
+podman build -f Dockerfile.prod -t <registry>/linktree:<tag> .
+podman push <registry>/linktree:<tag>
+```
+
+Then edit `k8s/linktree.yaml`: replace both `localhost/linktree:latest` references with that image, set real values in the `linktree` Secret, and set `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` for your domain. Then run `kubectl apply -f k8s/linktree.yaml`.
+
+The manifest started as `podman kube generate --type deployment --service linktree-db linktree-web`, run against local pods that had the same containers. Podman's output needed manual fixes: it drops podman secrets, emits a hostPath for the nginx config, turns named volumes into undeclared PVCs, and leaves the db Service without a port. To try it locally with `podman kube play`, change `POSTGRES_HOST` to `linktree-db-pod`, because podman ignores Services.
 
 ## Known gaps
 
