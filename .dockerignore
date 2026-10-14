@@ -5,3 +5,6 @@ __pycache__/
 .gitignore
 db.sqlite3
 .env
+
+elm/elm-stuff/
+static/js/page_editor.js

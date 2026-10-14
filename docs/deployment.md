@@ -8,7 +8,7 @@ This project ships two separate Docker setups: one for local development and one
 |------|---------|
 | `Dockerfile` | Dev image. Installs deps, no build optimizations. |
 | `docker-compose.yml` | Dev stack: `web` (bind-mounted source, `runserver`, auto-reload) + `db`. |
-| `Dockerfile.prod` | Multi-stage prod image. No compilers/dev headers in the final image, runs as a non-root user, bakes in `collectstatic` output, serves via Gunicorn. |
+| `Dockerfile.prod` | Multi-stage prod image. Compiles the Elm page editor with `--optimize` in a Node stage (the bundle isn't in git, so every build compiles it), then a final image with no compilers/dev headers, run as a non-root user, with `collectstatic` output baked in, served via Gunicorn. |
 | `docker-compose.prod.yml` | Prod stack: `db` + `web` (Gunicorn, no ports exposed to the host) + `nginx` (reverse proxy + TLS termination) + `certbot` (auto-renewal). |
 | `nginx.conf.template` | nginx config, templated with `${DOMAIN}` at container start. |
 | `init-letsencrypt.sh` | One-time script to bootstrap Let's Encrypt certificates. |
@@ -24,6 +24,7 @@ docker compose up --build
 - App: http://localhost:8000
 - Postgres: exposed on `localhost:5432` for connecting with a local client
 - Source is bind-mounted into the container — edits to the code are picked up immediately by `runserver`, no rebuild needed (only rebuild after changing `requirements.txt`)
+- `runserver` also compiles the Elm page editor in debug mode and recompiles it on every change to `elm/` (the image ships the `elm` binary); this needs `DEBUG=True` in `.env`
 - Migrations run automatically on container start
 
 ## Production

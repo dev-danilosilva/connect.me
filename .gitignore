@@ -6,3 +6,6 @@ db.sqlite3
 staticfiles/
 .pytest_cache/
 elm-stuff/
+
+# Elm build output: compiled by `runserver` in dev and by Dockerfile.prod on deploy
+static/js/page_editor.js

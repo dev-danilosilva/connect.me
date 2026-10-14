@@ -1,3 +1,15 @@
+# ---- Elm stage: compile the page editor bundle ----
+# The bundle isn't committed; every image build compiles it from elm/.
+FROM node:24-slim AS elm-builder
+
+RUN npm install -g elm@0.19.2-0
+
+WORKDIR /elm
+
+COPY elm/elm.json .
+COPY elm/src ./src
+RUN elm make src/Main.elm --optimize --output=page_editor.js
+
 # ---- Build stage: compile/install dependencies ----
 FROM python:3.12-slim AS builder
 
@@ -26,6 +38,7 @@ WORKDIR /app
 
 COPY --from=builder --chown=django:django /root/.local /home/django/.local
 COPY --chown=django:django . .
+COPY --from=elm-builder --chown=django:django /elm/page_editor.js static/js/page_editor.js
 
 RUN mkdir -p /app/staticfiles && chown django:django /app/staticfiles
 

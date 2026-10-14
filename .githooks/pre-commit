@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs the fast unit test suite (accounts, personal_links_manager) before
+# Runs the fast unit test suite (accounts, personal_links_manager, frontend) before
 # allowing a commit. e2e/ is excluded here since it spins up a browser +
 # LiveServer and is too slow for a pre-commit check; it still runs in
 # CI / `pytest` locally.
@@ -12,7 +12,7 @@ else
     PYTEST=pytest
 fi
 
-"$PYTEST" accounts personal_links_manager
+"$PYTEST" accounts personal_links_manager frontend
 status=$?
 
 if [ $status -ne 0 ]; then

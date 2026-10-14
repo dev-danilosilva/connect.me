@@ -74,6 +74,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    # Must come before staticfiles so its `runserver` (which also builds and
+    # watches the Elm page editor) takes precedence.
+    'frontend',
     'django.contrib.staticfiles',
     'accounts',
     'personal_links_manager',
