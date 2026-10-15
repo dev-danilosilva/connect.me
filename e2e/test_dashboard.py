@@ -1,5 +1,7 @@
 from playwright.sync_api import expect
 
+from personal_links_manager.models import LinkPage
+
 
 def login(page, live_server):
     page.goto(live_server.url + "/login/")
@@ -66,3 +68,33 @@ def test_logout_clears_session(page, live_server, demo_user):
 
     page.goto(live_server.url + "/dashboard/")
     page.wait_for_url("**/login/**")
+
+
+def test_visits_chart_shows_hover_tooltip_and_toggles(page, live_server, demo_user):
+    LinkPage.objects.create(owner=demo_user, handle="portfolio")
+    LinkPage.objects.create(owner=demo_user, handle="side-project")
+    login(page, live_server)
+
+    panel = page.locator(".visits-panel")
+    expect(panel.locator(".visits-title")).to_have_text("Page visits")
+    expect(panel.locator(".visits-legend-item")).to_have_count(2)
+    expect(panel.locator(".visits-total")).to_contain_text("in the last 30 days")
+
+    box = panel.locator(".visits-chart svg").first.bounding_box()
+    page.mouse.move(box["x"] + box["width"] * 0.6, box["y"] + box["height"] / 2)
+    tooltip = panel.locator(".visits-tooltip")
+    expect(tooltip).to_be_visible()
+    expect(tooltip.locator(".visits-tooltip-row")).to_have_count(3)  # 2 pages + total
+
+    panel.locator(".visits-legend-item", has_text="Side Project").click()
+    expect(panel.locator(".visits-legend-item", has_text="Side Project")).to_have_attribute(
+        "aria-pressed", "false"
+    )
+
+    panel.locator(".visits-range-btn", has_text="7d").click()
+    expect(panel.locator(".visits-total")).to_contain_text("in the last 7 days")
+
+
+def test_visits_chart_empty_state_without_pages(page, live_server, demo_user):
+    login(page, live_server)
+    expect(page.locator(".visits-empty")).to_have_text("Create a page to start tracking its visits.")

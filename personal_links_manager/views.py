@@ -6,18 +6,30 @@ from django.views.decorators.http import require_POST
 
 from .forms import CreatePageForm
 from .models import LinkPage
+from .stats import mock_daily_visits
 
 
 def home(request):
     return render(request, "personal_links_manager/home.html")
 
 
+def visits_chart_flags(pages):
+    return {
+        "pages": [
+            {"handle": page.handle, "title": page.title, "visits": mock_daily_visits(page)}
+            for page in pages
+        ],
+    }
+
+
 @login_required
 def dashboard(request):
+    pages = request.user.pages.all()
     context = {
-        "pages": request.user.pages.all(),
+        "pages": pages,
         "create_form": CreatePageForm(),
         "open_create_modal": False,
+        "visits_chart_flags": visits_chart_flags(pages),
     }
     return render(request, "personal_links_manager/dashboard.html", context)
 
@@ -32,10 +44,12 @@ def create_page(request):
         page.save()
         return redirect("page_editor", handle=page.handle)
 
+    pages = request.user.pages.all()
     context = {
-        "pages": request.user.pages.all(),
+        "pages": pages,
         "create_form": form,
         "open_create_modal": True,
+        "visits_chart_flags": visits_chart_flags(pages),
     }
     return render(request, "personal_links_manager/dashboard.html", context)
 

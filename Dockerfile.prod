@@ -1,5 +1,6 @@
-# ---- Elm stage: compile the page editor bundle ----
-# The bundle isn't committed; every image build compiles it from elm/.
+# ---- Elm stage: compile the Elm programs, one bundle each ----
+# The bundles aren't committed; every image build compiles them from elm/.
+# Keep this list in sync with PROGRAMS in frontend/elm.py.
 FROM node:24-slim AS elm-builder
 
 # The slim image has no CA bundle, and `elm make` needs HTTPS to fetch
@@ -14,7 +15,8 @@ WORKDIR /elm
 
 COPY elm/elm.json .
 COPY elm/src ./src
-RUN elm make src/Main.elm --optimize --output=page_editor.js
+RUN elm make src/PageEditor/Main.elm --optimize --output=page_editor.js \
+    && elm make src/VisitsChart/Main.elm --optimize --output=visits_chart.js
 
 # ---- Build stage: compile/install dependencies ----
 FROM python:3.12-slim AS builder
@@ -45,7 +47,7 @@ WORKDIR /app
 
 COPY --from=builder --chown=django:django /root/.local /home/django/.local
 COPY --chown=django:django . .
-COPY --from=elm-builder --chown=django:django /elm/page_editor.js static/js/page_editor.js
+COPY --from=elm-builder --chown=django:django /elm/page_editor.js /elm/visits_chart.js static/js/
 
 RUN mkdir -p /app/staticfiles && chown django:django /app/staticfiles
 

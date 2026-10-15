@@ -184,3 +184,16 @@ def test_page_editor_requires_login(client, user):
     response = client.get(reverse("page_editor", args=["needs-login"]))
     assert response.status_code == 302
     assert response.url.startswith(reverse("login"))
+
+
+def test_dashboard_passes_visits_chart_flags_per_page(client, user):
+    LinkPage.objects.create(owner=user, handle="portfolio")
+    client.force_login(user)
+
+    response = client.get(reverse("dashboard"))
+
+    pages = response.context["visits_chart_flags"]["pages"]
+    assert [p["handle"] for p in pages] == ["portfolio"]
+    assert pages[0]["title"] == "Portfolio"
+    assert len(pages[0]["visits"]) == 90
+    assert 'id="visits-chart-flags"' in response.content.decode()

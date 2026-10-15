@@ -1,11 +1,11 @@
-module MainTest exposing
+module PageEditor.MainTest exposing
     ( deviceSuite
     , suite
     )
 
 import Expect
 import Json.Decode as Decode
-import Main exposing (Device(..), deviceWidth, flagsDecoder)
+import PageEditor.Main exposing (Device(..), deviceWidth, flagsDecoder)
 import Test exposing (Test, describe, test)
 
 

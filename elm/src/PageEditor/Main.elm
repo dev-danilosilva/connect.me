@@ -1,4 +1,4 @@
-module Main exposing
+module PageEditor.Main exposing
     ( Device(..)
     , Flags
     , deviceWidth
@@ -6,11 +6,20 @@ module Main exposing
     , main
     )
 
+{-| The page editor program (/dashboard/pages/<handle>/edit/): a live preview
+of the link page beside its editing controls.
+
+Started from page_editor.html with `Elm.PageEditor.Main.init`; compiled to
+static/js/page_editor.js.
+
+-}
+
 import Browser
 import Html exposing (Html, a, button, div, h1, i, li, nav, ol, p, span, text)
 import Html.Attributes exposing (attribute, class, classList, href, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode exposing (Decoder)
+import PageEditor.PagePreview as PagePreview
 
 
 type alias Flags =
@@ -70,7 +79,18 @@ init flagsJson =
             ( { flags = flags, device = Phone }, Cmd.none )
 
         Err _ ->
-            ( { flags = Flags 0 "" "" "" "" "", device = Desktop }, Cmd.none )
+            ( { flags =
+                { pageId = 0
+                , handle = ""
+                , title = ""
+                , username = ""
+                , csrfToken = ""
+                , apiBase = ""
+                }
+            , device = Desktop
+            }
+            , Cmd.none
+            )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -124,7 +144,7 @@ viewPreview model =
             [ class "preview-frame"
             , style "width" (deviceWidth model.device |> Maybe.map (\w -> String.fromInt w ++ "px") |> Maybe.withDefault "100%")
             ]
-            []
+            [ PagePreview.view PagePreview.dummy ]
         ]
 
 

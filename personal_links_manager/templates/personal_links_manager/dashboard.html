@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Dashboard · SharedLink{% endblock %}
 {% block content %}
 <div class="dashboard-page">
@@ -42,6 +43,9 @@
       </button>
     </div>
 
+    <div id="visits-chart"></div>
+    {{ visits_chart_flags|json_script:"visits-chart-flags" }}
+
     <div class="page-card-grid">
       {% for page in pages %}
         <a href="{% url 'page_editor' page.handle %}" class="page-card">
@@ -60,4 +64,13 @@
 
   {% include "partials/_create_modal.html" %}
 </div>
+{% endblock %}
+{% block extra_scripts %}
+  <script src="{% static 'js/visits_chart.js' %}"></script>
+  <script>
+    (function () {
+      var flags = JSON.parse(document.getElementById("visits-chart-flags").textContent);
+      Elm.VisitsChart.Main.init({ node: document.getElementById("visits-chart"), flags: flags });
+    })();
+  </script>
 {% endblock %}

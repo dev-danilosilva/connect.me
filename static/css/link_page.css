@@ -1,0 +1,310 @@
+/*
+ * Link page: the public page visitors see, also rendered in the editor's
+ * preview (elm/src/LinkPage.elm).
+ *
+ * Isolation rules, so this file can later be shared with the public page
+ * unchanged:
+ *   - Every selector starts at `.lp-page`, and every class is `lp-` prefixed.
+ *     Nothing here styles the editor, and nothing in the editor's CSS should
+ *     target `lp-` classes.
+ *   - `.lp-page` resets everything it would otherwise inherit from the host
+ *     page (font, color, line-height, ...), so the editor's styles don't leak
+ *     in.
+ *   - Every themeable value is a `--lp-*` custom property declared on
+ *     `.lp-page` below. Component rules only read these variables. A page
+ *     style model maps onto this list; applying a style means setting the
+ *     variables (e.g. as inline styles on `.lp-page`), not editing rules.
+ */
+
+.lp-page {
+  /* Don't inherit anything from the host page. Custom properties aren't
+     affected by `all`, so the tokens below still apply. */
+  all: initial;
+
+  /* ---- Theme tokens: page ---- */
+  --lp-page-background: linear-gradient(160deg, #fdf4ff 0%, #f3e8ff 55%, #ede9fe 100%);
+  --lp-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --lp-text-color: #2e1065;
+  --lp-text-muted-color: #6b5b8a;
+  --lp-content-max-width: 580px;
+
+  /* ---- Theme tokens: hero (name + bio over the hero image) ---- */
+  --lp-hero-height: 420px;
+  /* Shown while the image loads, or if it fails. */
+  --lp-hero-background: linear-gradient(135deg, #4c1d95, #a21caf);
+  /* Darkens the image under the text so it stays readable on any photo. */
+  --lp-hero-overlay: linear-gradient(180deg, rgba(20, 6, 40, 0) 30%, rgba(20, 6, 40, 0.6) 60%, rgba(20, 6, 40, 0.92) 100%);
+  --lp-hero-text-color: #ffffff;
+  --lp-hero-bio-color: rgba(255, 255, 255, 0.82);
+  --lp-name-font-family: "Poppins", var(--lp-font-family);
+  --lp-name-font-size: 32px;
+
+  /* ---- Theme tokens: social icons ---- */
+  --lp-social-color: #4c1d95;
+  --lp-social-hover-color: #7c3aed;
+  --lp-social-size: 22px;
+
+  /* ---- Theme tokens: link tiles ---- */
+  /* Each tile paints its own background (color, gradient, image or video);
+     this is only the fallback while an image or video loads. */
+  --lp-tile-fallback-background: #4c1d95;
+  --lp-tile-text-color: #ffffff;
+  --lp-tile-gap: 12px;
+  --lp-tile-radius: 18px;
+  --lp-tile-shadow: 0 6px 18px rgba(76, 29, 149, 0.16);
+  --lp-tile-hover-shadow: 0 18px 36px -8px rgba(76, 29, 149, 0.38);
+  --lp-tile-label-font-size: 15px;
+  --lp-tile-label-font-weight: 700;
+  /* Darkens the bottom of image and video tiles so the label stays
+     readable on any picture. */
+  --lp-tile-media-overlay: linear-gradient(180deg, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.7) 100%);
+
+  display: block;
+  box-sizing: border-box;
+  min-height: 100%;
+  background: var(--lp-page-background);
+  font-family: var(--lp-font-family);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--lp-text-color);
+  text-align: center;
+  -webkit-font-smoothing: antialiased;
+}
+
+.lp-page *,
+.lp-page *::before,
+.lp-page *::after {
+  box-sizing: border-box;
+}
+
+.lp-page .lp-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: var(--lp-content-max-width);
+  margin: 0 auto;
+  padding: 28px 24px 32px;
+}
+
+/* ---- Hero ---- */
+
+/* Full-bleed image with the name and bio laid over its lower edge,
+   left-aligned to the same column as the content below. */
+.lp-page .lp-hero {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: var(--lp-hero-height);
+  overflow: hidden;
+  background: var(--lp-hero-background);
+  color: var(--lp-hero-text-color);
+  text-align: left;
+}
+
+.lp-page .lp-hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lp-page .lp-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--lp-hero-overlay);
+}
+
+.lp-page .lp-hero-text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: var(--lp-content-max-width);
+  margin: 0 auto;
+  padding: 0 24px 28px;
+}
+
+.lp-page .lp-name {
+  margin: 0;
+  font-family: var(--lp-name-font-family);
+  font-size: var(--lp-name-font-size);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--lp-hero-text-color);
+}
+
+.lp-page .lp-bio {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--lp-hero-bio-color);
+}
+
+/* ---- Social icons ---- */
+
+.lp-page .lp-socials {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-page .lp-social {
+  display: block;
+  font-size: var(--lp-social-size);
+  color: var(--lp-social-color);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.lp-page .lp-social:hover {
+  color: var(--lp-social-hover-color);
+}
+
+/* ---- Link tiles ---- */
+
+/* Two columns of square tiles, each with its background behind a label
+   anchored to the bottom-left corner. */
+.lp-page .lp-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--lp-tile-gap);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-page .lp-tile {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 1;
+  overflow: hidden;
+  padding: 14px;
+  border-radius: var(--lp-tile-radius);
+  background: var(--lp-tile-fallback-background);
+  box-shadow: var(--lp-tile-shadow);
+  color: var(--lp-tile-text-color);
+  text-align: left;
+  text-decoration: none;
+  /* Springy: overshoots a touch on the way up, settles on the way down. */
+  transition:
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lp-page .lp-tile:hover,
+.lp-page .lp-tile:focus-visible {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--lp-tile-hover-shadow);
+}
+
+.lp-page .lp-tile:active {
+  transform: translateY(-2px) scale(0.98);
+  transition-duration: 0.12s;
+}
+
+
+.lp-page .lp-tile:focus-visible {
+  outline: 3px solid var(--lp-social-hover-color);
+  outline-offset: 3px;
+}
+
+.lp-page .lp-tile-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lp-page .lp-tile:hover .lp-tile-media {
+  transform: scale(1.08);
+}
+
+.lp-page .lp-tile--image::after,
+.lp-page .lp-tile--video::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--lp-tile-media-overlay);
+}
+
+.lp-page .lp-tile-label {
+  position: relative;
+  z-index: 1;
+  font-size: var(--lp-tile-label-font-size);
+  font-weight: var(--lp-tile-label-font-weight);
+  line-height: 1.25;
+  color: var(--lp-tile-text-color);
+  overflow-wrap: anywhere;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* An arrow that slides in after the label on hover. */
+.lp-page .lp-tile-label::after {
+  content: "\2192";
+  display: inline-block;
+  margin-left: 6px;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.lp-page .lp-tile:hover .lp-tile-label,
+.lp-page .lp-tile:focus-visible .lp-tile-label {
+  transform: translateY(-2px);
+}
+
+.lp-page .lp-tile:hover .lp-tile-label::after,
+.lp-page .lp-tile:focus-visible .lp-tile-label::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Show the video tile's poster (its background) instead of motion. */
+@media (prefers-reduced-motion: reduce) {
+  .lp-page .lp-tile--video video {
+    display: none;
+  }
+
+  .lp-page .lp-tile,
+  .lp-page .lp-tile-media,
+  .lp-page .lp-tile-label,
+  .lp-page .lp-tile-label::after {
+    transition: none;
+  }
+
+  .lp-page .lp-tile:hover,
+  .lp-page .lp-tile:focus-visible,
+  .lp-page .lp-tile:active,
+  .lp-page .lp-tile:hover .lp-tile-media,
+  .lp-page .lp-tile:hover .lp-tile-label,
+  .lp-page .lp-tile:focus-visible .lp-tile-label,
+  .lp-page .lp-tile-label::after {
+    transform: none;
+  }
+
+}
+
+/* ---- Footer ---- */
+
+.lp-page .lp-footer {
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--lp-text-muted-color);
+}

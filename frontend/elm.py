@@ -1,8 +1,11 @@
-"""Builds the Elm page editor (elm/) into static/js/page_editor.js.
+"""Builds the Elm programs (elm/) into static/js/, one bundle per program.
 
-The bundle is a build artifact and is not committed: `runserver` compiles it
-in debug mode and recompiles on change, the e2e suite rebuilds it when it's
-stale, and the production image compiles it with --optimize.
+Each program is a `<Name>/Main.elm` entrypoint with its own `main`, compiled
+on its own so a page loads only the program it embeds (see PROGRAMS).
+
+The bundles are build artifacts and are not committed: `runserver` compiles
+them in debug mode and recompiles on change, the e2e suite rebuilds them when
+they're stale, and the production image compiles them with --optimize.
 """
 
 import shutil
@@ -14,8 +17,17 @@ from pathlib import Path
 from django.conf import settings
 
 ELM_DIR = Path(settings.BASE_DIR) / "elm"
-ENTRYPOINT = "src/Main.elm"
-OUTPUT = Path(settings.BASE_DIR) / "static" / "js" / "page_editor.js"
+OUTPUT_DIR = Path(settings.BASE_DIR) / "static" / "js"
+
+# Entrypoint (relative to ELM_DIR) -> bundle filename in OUTPUT_DIR.
+PROGRAMS = {
+    "src/PageEditor/Main.elm": "page_editor.js",
+    "src/VisitsChart/Main.elm": "visits_chart.js",
+}
+
+
+def outputs():
+    return [OUTPUT_DIR / bundle for bundle in PROGRAMS.values()]
 
 
 class ElmNotInstalled(Exception):
@@ -23,15 +35,19 @@ class ElmNotInstalled(Exception):
 
 
 def compile_elm(debug=False):
-    """Runs `elm make`; returns (succeeded, compiler output)."""
+    """Runs `elm make` once per program; returns (all succeeded, compiler output)."""
     elm = shutil.which("elm")
     if elm is None:
         raise ElmNotInstalled("The `elm` compiler is not on PATH (see README: Elm frontend).")
-    args = [elm, "make", ENTRYPOINT, f"--output={OUTPUT}"]
-    if debug:
-        args.append("--debug")
-    result = subprocess.run(args, cwd=ELM_DIR, capture_output=True, text=True)
-    return result.returncode == 0, (result.stdout + result.stderr).strip()
+    succeeded, output = True, []
+    for entrypoint, bundle in PROGRAMS.items():
+        args = [elm, "make", entrypoint, f"--output={OUTPUT_DIR / bundle}"]
+        if debug:
+            args.append("--debug")
+        result = subprocess.run(args, cwd=ELM_DIR, capture_output=True, text=True)
+        succeeded = succeeded and result.returncode == 0
+        output.append((result.stdout + result.stderr).strip())
+    return succeeded, "\n".join(output)
 
 
 def source_mtimes():
@@ -40,9 +56,12 @@ def source_mtimes():
 
 
 def bundle_is_stale():
-    if not OUTPUT.exists():
+    """True if any bundle is missing or older than any source. Programs share
+    modules, so any source change rebuilds them all."""
+    bundles = outputs()
+    if not all(bundle.exists() for bundle in bundles):
         return True
-    built_at = OUTPUT.stat().st_mtime_ns
+    built_at = min(bundle.stat().st_mtime_ns for bundle in bundles)
     return any(mtime > built_at for mtime in source_mtimes().values())
 
 

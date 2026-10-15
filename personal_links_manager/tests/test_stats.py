@@ -1,8 +1,15 @@
+import datetime
+
 import pytest
 
 from accounts.models import User
 from personal_links_manager.models import LinkPage
-from personal_links_manager.stats import compute_dashboard_stats, pages_per_user_histogram, percentile
+from personal_links_manager.stats import (
+    compute_dashboard_stats,
+    mock_daily_visits,
+    pages_per_user_histogram,
+    percentile,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -80,3 +87,23 @@ class TestComputeDashboardStats:
         assert stats["total_users"] == 21
         assert stats["total_pages"] == 25
         assert stats["p99_pages_per_user"] >= stats["average_pages_per_user"]
+
+
+class TestMockDailyVisits:
+    @pytest.fixture
+    def page(self):
+        owner = User.objects.create_user(email="visits@example.com", password="pw")
+        return LinkPage.objects.create(owner=owner, handle="visits-page")
+
+    def test_one_row_per_day_ending_today_oldest_first(self, page):
+        today = datetime.date(2026, 10, 15)
+        series = mock_daily_visits(page, days=30, today=today)
+
+        assert len(series) == 30
+        assert series[0]["date"] == "2026-09-16"
+        assert series[-1]["date"] == "2026-10-15"
+        assert all(isinstance(row["visits"], int) and row["visits"] >= 0 for row in series)
+
+    def test_is_stable_for_the_same_page(self, page):
+        today = datetime.date(2026, 10, 15)
+        assert mock_daily_visits(page, today=today) == mock_daily_visits(page, today=today)

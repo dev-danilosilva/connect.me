@@ -3,6 +3,7 @@
 {% block title %}Edit {{ elm_flags.title }} · SharedLink{% endblock %}
 {% block extra_head %}
   <link rel="stylesheet" href="{% static 'css/page_editor.css' %}">
+  <link rel="stylesheet" href="{% static 'css/link_page.css' %}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 {% endblock %}
 {% block content %}
@@ -21,7 +22,7 @@
   <script>
     (function () {
       var flags = JSON.parse(document.getElementById("elm-flags").textContent);
-      Elm.Main.init({ node: document.getElementById("elm-app"), flags: flags });
+      Elm.PageEditor.Main.init({ node: document.getElementById("elm-app"), flags: flags });
     })();
   </script>
 {% endblock %}

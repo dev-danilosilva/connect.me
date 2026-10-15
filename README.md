@@ -67,21 +67,31 @@ python manage.py shell
 docker compose down
 ```
 
-### Elm frontend (page editor)
+### Elm frontend
 
-Most of the app is server-rendered Django templates. The one exception is the page editor (`/dashboard/pages/<handle>/edit/`), which is a small Elm app.
+Most of the app is server-rendered Django templates. Elm is used where a piece of UI needs real interactivity, as **separate Elm programs**: each one has its own `main`, compiles to its own bundle and is embedded on its own, so a page only loads the program it uses.
+
+| Program | Entrypoint | Bundle | Started with | Embedded in |
+|---|---|---|---|---|
+| Page editor | `elm/src/PageEditor/Main.elm` | `static/js/page_editor.js` | `Elm.PageEditor.Main.init` | `page_editor.html` (`/dashboard/pages/<handle>/edit/`) |
+| Visits chart | `elm/src/VisitsChart/Main.elm` | `static/js/visits_chart.js` | `Elm.VisitsChart.Main.init` | `dashboard.html` (`/dashboard/`) |
+
+Layout conventions in `elm/src/`:
+
+- **One folder per program**, named after it, with the entrypoint at `<Name>/Main.elm`. Modules only that program uses go next to it as `<Name>/*.elm`, e.g. `PageEditor/PagePreview.elm`, the link page as visitors see it, rendered in the editor's preview.
+- **Shared modules** live under `elm/src/Lib/`, outside any program folder, as `Lib.<Module>`: `Lib.Format` (number and "YYYY-MM-DD" date formatting) and `Lib.List` (list helpers missing from elm/core). They hold no program-specific code.
+- `elm/tests/` mirrors `src/` (e.g. `tests/PageEditor/MainTest.elm`).
+
+To add a program: create `elm/src/<Name>/Main.elm` with a `main`, add it to `PROGRAMS` in `frontend/elm.py` and to the Elm stage of `Dockerfile.prod`, gitignore its bundle, and load it from a template with `Elm.<Name>.Main.init`.
 
 | Path | What it is |
 |---|---|
-| `elm/elm.json` | Elm project file (dependencies, compiler version) |
-| `elm/src/Main.elm` | The editor app |
-| `elm/tests/` | Elm unit tests (`elm-explorations/test`) |
-| `static/js/page_editor.js` | Compiled output — a build artifact, **gitignored** |
-| `static/css/page_editor.css` | Editor styles (shared tokens and glass styles live in `static/css/app.css`) |
-| `personal_links_manager/templates/personal_links_manager/page_editor.html` | Loads the bundle and starts the app |
-| `frontend/` | Django app that builds the bundle: `elm.py` (compile/watch helpers) and the `runserver` override |
+| `elm/elm.json` | Elm project file (dependencies, compiler version), shared by all programs |
+| `static/js/*.js` (the bundles above) | Compiled output — build artifacts, **gitignored** |
+| `static/css/page_editor.css` | Editor styles (shared tokens and glass styles, including the visits chart's, live in `static/css/app.css`) |
+| `frontend/` | Django app that builds the bundles: `elm.py` (compile/watch helpers, `PROGRAMS`) and the `runserver` override |
 
-There's no bundler and no `package.json`: the Elm compiler writes one JS file straight into `static/`, and Django serves it like any other static file.
+There's no bundler and no `package.json`: the Elm compiler writes each bundle straight into `static/`, and Django serves it like any other static file.
 
 #### Prerequisites
 
@@ -93,47 +103,50 @@ elm --version   # must print 0.19.2
 
 #### Compiling
 
-In development you don't compile by hand: `python manage.py runserver` does it. On startup it compiles the editor in **debug mode** (`elm make --debug`, which adds Elm's time-travel debugger in the bottom-right corner of the editor) and then **watches `elm/src/` and `elm/elm.json`**, recompiling within about a second of every save:
+In development you don't compile by hand: `python manage.py runserver` does it. On startup it compiles every program in **debug mode** (`elm make --debug`, which adds Elm's time-travel debugger in the bottom-right corner of the page) and then **watches `elm/src/` and `elm/elm.json`**, recompiling within about a second of every save:
 
 ```
-Elm: compiled page_editor.js (debug)
+Elm: compiled page_editor.js, visits_chart.js (debug)
 Elm: watching …/elm for changes (debug mode)
 ```
 
-Compile errors are printed in the `runserver` output; the server keeps running and the next save that fixes the error rebuilds the bundle. Reload the editor page to pick up a new build (do a hard refresh, Ctrl+Shift+R, if it looks stale — static files aren't cache-busted in development).
+Compile errors are printed in the `runserver` output; the server keeps running and the next save that fixes the error rebuilds the bundles. Reload the page to pick up a new build (do a hard refresh, Ctrl+Shift+R, if it looks stale — static files aren't cache-busted in development).
 
 This only happens when `DEBUG=True`. To run the server without it, use `python manage.py runserver --no-elm`. To compile by hand (e.g. without the server), run from the repo root:
 
 ```bash
-cd elm && elm make src/Main.elm --debug --output=../static/js/page_editor.js && cd ..
+cd elm \
+  && elm make src/PageEditor/Main.elm --debug --output=../static/js/page_editor.js \
+  && elm make src/VisitsChart/Main.elm --debug --output=../static/js/visits_chart.js \
+  && cd ..
 ```
 
-**The bundle is not committed.** `static/js/page_editor.js` is gitignored; commit only the `.elm` sources. Every production deploy compiles it from scratch with `--optimize` in an Elm stage of `Dockerfile.prod`, so deploys always ship what's in `elm/src/`. The dev `Dockerfile` (`--profile full-docker`) includes the `elm` binary too, so the watcher also works there.
+**The bundles are not committed.** They're gitignored; commit only the `.elm` sources. Every production deploy compiles them from scratch with `--optimize` in an Elm stage of `Dockerfile.prod`, so deploys always ship what's in `elm/src/`. The dev `Dockerfile` (`--profile full-docker`) includes the `elm` binary too, so the watcher also works there.
 
-When upgrading Elm, change the version in three places so they stay in sync: `elm/elm.json` (`elm-version`), and the `npm install -g elm@…` line in both `Dockerfile` and `Dockerfile.prod`.
+When upgrading Elm, change the version in four places so they stay in sync: `elm/elm.json` (`elm-version`), the `npm install -g elm@…` line in both `Dockerfile` and `Dockerfile.prod`, and the pinned `elm-test@…` runner (the Testing commands below and `ELM_TEST_VERSION` in `.githooks/pre-commit`).
 
 #### How Django hands data to Elm
 
-The `page_editor` view (`personal_links_manager/views.py`) builds an `elm_flags` dict. The template serializes it with `json_script`, and `Elm.Main.init` receives it as flags. Elm decodes it with `flagsDecoder` in `Main.elm`.
+Each program gets its own flags from the view that embeds it (`personal_links_manager/views.py`): `page_editor` builds `elm_flags` for the page editor, and `dashboard` builds `visits_chart_flags` for the visits chart (mock visit data for now, from `stats.mock_daily_visits`). The template serializes them with `json_script` and passes them to the program's `init`. The page editor decodes its flags with `flagsDecoder` in `PageEditor/Main.elm`; the visits chart decodes `{ "pages": [...] }` in `VisitsChart/Main.elm`.
 
-To add a new value:
+To add a value to the page editor's flags:
 
 1. Add the key to `elm_flags` in the view (plus a test in `personal_links_manager/tests/test_views.py`).
 2. Add the field to the `Flags` type alias and to `flagsDecoder` (bump `Decode.mapN`).
-3. Update the fallback `Flags …` value in `init` and the sample JSON in `elm/tests/MainTest.elm`.
+3. Update the fallback `Flags …` value in `init` and the sample JSON in `elm/tests/PageEditor/MainTest.elm`.
 
 If the JSON and the decoder disagree, decoding fails silently and the app starts with empty fallback flags, so a blank title or missing data usually means a mismatch here.
 
 #### Testing
 
 ```bash
-cd elm && npx elm-test && cd ..         # Elm unit tests
-pytest e2e/test_page_editor.py          # end-to-end editor tests (Playwright)
+cd elm && npx elm-test@0.19.2-1 && cd ..   # Elm unit tests (tests/ mirrors src/, e.g. tests/Lib/FormatTest.elm)
+pytest e2e/test_page_editor.py e2e/test_dashboard.py   # end-to-end tests for both programs (Playwright)
 ```
 
-> **Known issue:** `npx elm-test` currently fails with `It requires 0.19.3, but you are using 0.19.2` because the test runner doesn't support this project's Elm version. Until that's resolved, rely on the e2e tests for coverage of the editor.
+> **Pin the runner version.** A bare `npx elm-test` fetches the latest runner (0.19.3-x), which expects Elm 0.19.3 and fails with `It requires 0.19.3, but you are using 0.19.2`. `elm-test@0.19.2-1` matches this project's compiler; bump it together with the Elm version.
 
-The e2e suite compiles the bundle itself (debug mode) when it's missing or older than the Elm sources, so it works on a fresh clone; it needs `elm` on `PATH`. The `frontend` unit tests (`pytest frontend`, also run by the pre-commit hook) cover the build/watch helpers.
+The e2e suite compiles the bundles itself (debug mode) when any is missing or older than the Elm sources, so it works on a fresh clone; it needs `elm` on `PATH`. The `frontend` unit tests (`pytest frontend`, also run by the pre-commit hook) cover the build/watch helpers.
 
 ### Running tests
 
@@ -146,7 +159,7 @@ pytest                   # runs both
 
 ### Git hooks
 
-A `pre-commit` hook (runs the fast unit tests, `pytest accounts personal_links_manager`) lives in `.githooks/`. Activate it once per clone:
+A `pre-commit` hook (runs the fast unit tests: `pytest accounts personal_links_manager frontend` and the Elm unit tests with `elm-test`) lives in `.githooks/`. The Elm step needs `npx`; without it the hook prints a warning and skips that step. Activate it once per clone:
 
 ```bash
 git config core.hooksPath .githooks

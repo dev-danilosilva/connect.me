@@ -8,3 +8,4 @@ db.sqlite3
 
 elm/elm-stuff/
 static/js/page_editor.js
+static/js/visits_chart.js

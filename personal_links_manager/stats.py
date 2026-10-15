@@ -1,4 +1,6 @@
+import datetime
 import math
+import random
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count
@@ -65,3 +67,26 @@ def compute_dashboard_stats():
         "p99_pages_per_user": p99_pages_per_user,
         "histogram": pages_per_user_histogram(pages_per_user),
     }
+
+
+def mock_daily_visits(page, days=90, today=None):
+    """Placeholder visit counts until real page-view tracking exists.
+
+    [{"date": "YYYY-MM-DD", "visits": N}, ...] oldest first, ending today.
+    Seeded by the page id so a page's history is stable across reloads:
+    a per-page baseline, a slow upward trend, weekend dips, and noise.
+    """
+    today = today or datetime.date.today()
+    rng = random.Random(page.id)
+    baseline = rng.uniform(20, 120)
+    growth = rng.uniform(0.0, 0.012)
+
+    series = []
+    for offset in range(days):
+        day = today - datetime.timedelta(days=days - 1 - offset)
+        expected = baseline * (1 + growth * offset)
+        if day.weekday() >= 5:
+            expected *= 0.7
+        visits = max(0, round(expected * rng.uniform(0.75, 1.25)))
+        series.append({"date": day.isoformat(), "visits": visits})
+    return series

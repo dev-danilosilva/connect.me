@@ -1,10 +1,14 @@
 #!/bin/sh
-# Runs the fast unit test suite (accounts, personal_links_manager, frontend) before
-# allowing a commit. e2e/ is excluded here since it spins up a browser +
-# LiveServer and is too slow for a pre-commit check; it still runs in
-# CI / `pytest` locally.
+# Runs the fast unit test suites before allowing a commit:
+#   - Python: accounts, personal_links_manager, frontend (pytest)
+#   - Elm: elm/tests/ (elm-test)
+# e2e/ is excluded here since it spins up a browser + LiveServer and is too
+# slow for a pre-commit check; it still runs in CI / `pytest` locally.
 #
 # Activated via: git config core.hooksPath .githooks
+
+# Must match the Elm compiler version in elm/elm.json (see README: Testing).
+ELM_TEST_VERSION=0.19.2-1
 
 if [ -x venv/bin/pytest ]; then
     PYTEST=venv/bin/pytest
@@ -14,6 +18,12 @@ fi
 
 "$PYTEST" accounts personal_links_manager frontend
 status=$?
+
+if command -v npx >/dev/null 2>&1; then
+    (cd elm && npx --yes "elm-test@$ELM_TEST_VERSION") || status=1
+else
+    echo "pre-commit: npx not found, skipping the Elm unit tests" >&2
+fi
 
 if [ $status -ne 0 ]; then
     echo "" >&2

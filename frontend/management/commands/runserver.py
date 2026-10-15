@@ -11,8 +11,8 @@ from frontend import elm
 
 class Command(StaticfilesRunserverCommand):
     help = (
-        "Starts the development server, compiling the Elm page editor in debug "
-        "mode and recompiling it whenever its sources change."
+        "Starts the development server, compiling the Elm programs in debug "
+        "mode and recompiling them whenever their sources change."
     )
 
     def add_arguments(self, parser):
@@ -38,7 +38,7 @@ class Command(StaticfilesRunserverCommand):
         try:
             self.build_elm()
         except elm.ElmNotInstalled as error:
-            self.stderr.write(f"Elm: {error} The page editor will not load.")
+            self.stderr.write(f"Elm: {error} Pages that embed Elm will not load.")
             return
         elm.watch(self.build_elm)
         self.stdout.write(f"Elm: watching {elm.ELM_DIR} for changes (debug mode)")
@@ -47,7 +47,8 @@ class Command(StaticfilesRunserverCommand):
     def build_elm(self):
         ok, output = elm.compile_elm(debug=True)
         if ok:
-            self.stdout.write(self.style.SUCCESS(f"Elm: compiled {elm.OUTPUT.name} (debug)"))
+            bundles = ", ".join(bundle.name for bundle in elm.outputs())
+            self.stdout.write(self.style.SUCCESS(f"Elm: compiled {bundles} (debug)"))
         else:
             self.stderr.write(self.style.ERROR("Elm: compile failed") + "\n" + output)
         # The watcher thread logs between requests; flush so messages show up
