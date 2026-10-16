@@ -1,7 +1,12 @@
 from django.urls import path
 
 from . import views
-from .api_views import DraftLayoutAPIView, HandleAvailabilityAPIView, PublishLayoutAPIView
+from .api_views import (
+    DraftLayoutAPIView,
+    HandleAvailabilityAPIView,
+    MediaUploadAPIView,
+    PublishLayoutAPIView,
+)
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -19,4 +24,5 @@ urlpatterns = [
         PublishLayoutAPIView.as_view(),
         name="api_page_publish",
     ),
+    path("api/media/", MediaUploadAPIView.as_view(), name="api_media"),
 ]
