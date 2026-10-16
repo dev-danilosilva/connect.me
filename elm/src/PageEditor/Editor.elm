@@ -286,6 +286,22 @@ acceptedTypes slot =
             [ "image/jpeg", "image/png", "image/webp" ]
 
 
+{-| The Upload button's accessible name. It mustn't contain the field's
+own label, or looking the field up by its label would also find the button.
+-}
+uploadLabel : Slot -> String
+uploadLabel slot =
+    case slot of
+        VideoSrc ->
+            "Upload a video file"
+
+        VideoPoster ->
+            "Upload a poster image"
+
+        ImageSrc ->
+            "Upload an image file"
+
+
 isInProgress : UploadState -> Bool
 isInProgress state =
     case state of
@@ -992,7 +1008,7 @@ mediaField model target config =
             , button
                 [ type_ "button"
                 , class "editor-upload-button"
-                , attribute "aria-label" ("Upload " ++ String.toLower config.label)
+                , attribute "aria-label" (uploadLabel target.slot)
                 , disabled (uploading /= Nothing)
                 , onClick (RequestUpload target)
                 ]

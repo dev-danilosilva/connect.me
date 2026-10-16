@@ -3,6 +3,7 @@ import re
 from playwright.sync_api import expect
 
 from personal_links_manager.models import LinkPage
+from personal_links_manager.tests import media_samples
 from personal_links_manager.tests.layouts import sample_layout
 
 
@@ -286,3 +287,48 @@ def test_changing_a_tile_background(page, live_server, demo_user, demo_page_with
     tile = page.locator(".preview-frame .lp-tile", has_text="Book a call")
     expect(tile).to_have_class(re.compile("lp-tile--image"))
     expect(tile.locator("img")).to_have_attribute("src", "https://picsum.photos/seed/call/600/600")
+
+
+def choose_file(page, button, name, mime_type, data):
+    with page.expect_file_chooser() as chooser:
+        button.click()
+    chooser.value.set_files(files=[{"name": name, "mimeType": mime_type, "buffer": data}])
+
+
+def test_uploading_a_video_and_poster_sets_the_tile_background(
+    page, live_server, demo_user, demo_page_with_layout, settings, tmp_path
+):
+    settings.MEDIA_ROOT = tmp_path
+    open_editor(page, live_server, demo_user, demo_page_with_layout)
+    page.locator(".editor-item-toggle", has_text="Watch my talk").click()
+    item = page.locator(".editor-item-open")
+
+    choose_file(page, item.get_by_role("button", name="Upload a video file"), "talk.mp4", "video/mp4", media_samples.MP4)
+    expect(item.get_by_label("Video URL")).to_have_value(re.compile(r"/media/[0-9a-f-]{36}\.mp4$"))
+    choose_file(page, item.get_by_role("button", name="Upload a poster image"), "poster.png", "image/png", media_samples.PNG)
+    expect(item.get_by_label("Poster image URL")).to_have_value(re.compile(r"/media/[0-9a-f-]{36}\.png$"))
+
+    # The bytes are only a signature, so check the attributes, not playback.
+    video = page.locator(".preview-frame .lp-tile--video video.lp-tile-media").first
+    expect(video).to_have_attribute("src", re.compile(r"/media/.+\.mp4$"))
+    expect(video).to_have_attribute("poster", re.compile(r"/media/.+\.png$"))
+
+    page.locator("button.editor-action", has_text="Save").click()
+    expect(page.locator(".editor-status")).to_have_text(re.compile("^Saved"))
+    page.reload()
+    expect(page.locator(".preview-frame .lp-tile--video video.lp-tile-media").first).to_have_attribute(
+        "src", re.compile(r"/media/.+\.mp4$")
+    )
+
+
+def test_a_rejected_upload_shows_the_servers_message(
+    page, live_server, demo_user, demo_page_with_layout, settings, tmp_path
+):
+    settings.MEDIA_ROOT = tmp_path
+    open_editor(page, live_server, demo_user, demo_page_with_layout)
+    page.locator(".editor-item-toggle", has_text="Watch my talk").click()
+    item = page.locator(".editor-item-open")
+
+    choose_file(page, item.get_by_role("button", name="Upload a video file"), "photo.mp4", "video/mp4", media_samples.HEIC)
+
+    expect(item.locator(".editor-field-problem")).to_have_text("Upload an MP4 or WebM video.")
