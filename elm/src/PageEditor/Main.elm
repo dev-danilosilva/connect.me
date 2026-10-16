@@ -4,6 +4,7 @@ port module PageEditor.Main exposing
     , deviceWidth
     , flagsDecoder
     , main
+    , uploadErrorMessage
     )
 
 {-| The page editor program (/dashboard/pages/<handle>/edit/): a live preview
@@ -20,6 +21,8 @@ static/js/page\_editor.js.
 -}
 
 import Browser
+import File exposing (File)
+import File.Select
 import Html exposing (Html, a, button, div, h1, i, li, nav, ol, p, text)
 import Html.Attributes exposing (attribute, class, classList, disabled, href, style, type_)
 import Html.Events exposing (onClick)
@@ -114,6 +117,9 @@ type Msg
     | Publish
     | GotSaved (Result String Layout)
     | GotPublished (Result String ())
+    | FileChosen Editor.UploadTarget File
+    | GotUploadProgress Editor.UploadTarget Http.Progress
+    | GotUploaded Editor.UploadTarget (Result String String)
 
 
 init : Decode.Value -> ( Model, Cmd Msg )
@@ -170,12 +176,16 @@ isBusy model =
 
 canSave : Model -> Bool
 canSave model =
-    hasUnsavedChanges model && not (isBusy model) && Editor.isValid model.editor.layout
+    hasUnsavedChanges model
+        && not (isBusy model)
+        && not (Editor.isUploading model.editor)
+        && Editor.isValid model.editor.layout
 
 
 canPublish : Model -> Bool
 canPublish model =
     not (isBusy model)
+        && not (Editor.isUploading model.editor)
         && Editor.isValid model.editor.layout
         && (hasUnsavedChanges model || model.published /= Just model.saved)
 
@@ -203,6 +213,9 @@ update msg model =
     case msg of
         SetDevice device ->
             ( { model | device = device }, Cmd.none )
+
+        EditorMsg (Editor.RequestUpload target) ->
+            ( model, File.Select.file (Editor.acceptedTypes target.slot) (FileChosen target) )
 
         EditorMsg editorMsg ->
             ( { model | editor = Editor.update editorMsg model.editor }, Cmd.none )
@@ -263,6 +276,36 @@ update msg model =
         GotPublished (Err message) ->
             ( { model | request = Failed message }, Cmd.none )
 
+        FileChosen target file ->
+            ( { model | editor = Editor.uploadStarted target model.editor }
+            , Http.request
+                { method = "POST"
+                , headers = [ Http.header "X-CSRFToken" model.flags.csrfToken ]
+                , url = model.flags.apiBase ++ "media/"
+                , body =
+                    Http.multipartBody
+                        [ Http.stringPart "kind" (Editor.slotKind target.slot)
+                        , Http.filePart "file" file
+                        ]
+                , expect = expectJsonWith uploadErrorMessage (GotUploaded target) (Decode.field "url" Decode.string)
+                , timeout = Nothing
+                , tracker = Just (Editor.uploadKey target)
+                }
+            )
+
+        GotUploadProgress target progress ->
+            case progress of
+                Http.Sending sending ->
+                    ( { model | editor = Editor.uploadProgress target (round (100 * Http.fractionSent sending)) model.editor }
+                    , Cmd.none
+                    )
+
+                Http.Receiving _ ->
+                    ( model, Cmd.none )
+
+        GotUploaded target result ->
+            ( { model | editor = Editor.uploadFinished target result model.editor }, Cmd.none )
+
 
 save : Bool -> Model -> ( Model, Cmd Msg )
 save thenPublish model =
@@ -299,11 +342,16 @@ pageApiUrl flags path =
     flags.apiBase ++ "pages/" ++ flags.handle ++ "/" ++ path
 
 
-{-| Like Http.expectJson, but failures become a message for the person
-editing, using the server's validation errors when there are any.
--}
 expectJson : (Result String a -> msg) -> Decoder a -> Http.Expect msg
-expectJson toMsg decoder =
+expectJson =
+    expectJsonWith statusMessage
+
+
+{-| Like Http.expectJson, but failures become a message for the person
+editing, made by `messageFor status body` for error statuses.
+-}
+expectJsonWith : (Int -> String -> String) -> (Result String a -> msg) -> Decoder a -> Http.Expect msg
+expectJsonWith messageFor toMsg decoder =
     Http.expectStringResponse toMsg
         (\response ->
             case response of
@@ -312,7 +360,7 @@ expectJson toMsg decoder =
                         |> Result.mapError (\_ -> "The server sent an unexpected response.")
 
                 Http.BadStatus_ metadata body ->
-                    Err (statusMessage metadata.statusCode body)
+                    Err (messageFor metadata.statusCode body)
 
                 Http.NetworkError_ ->
                     Err "Couldn't reach the server. Check your connection and try again."
@@ -341,6 +389,31 @@ statusMessage status body =
 
         _ ->
             "Something went wrong (error " ++ String.fromInt status ++ "). Try again."
+
+
+{-| Upload errors are shown under the field, so the server's message
+(personal\_links\_manager/media.py) is used as it is.
+-}
+uploadErrorMessage : Int -> String -> String
+uploadErrorMessage status body =
+    case status of
+        400 ->
+            case Decode.decodeString errorMessagesDecoder body of
+                Ok (first :: _) ->
+                    first
+
+                _ ->
+                    "Couldn't upload the file."
+
+        403 ->
+            "Your session has expired. Sign in again in another tab, then retry."
+
+        -- From nginx's client_max_body_size, before Django sees the file.
+        413 ->
+            "That file is too big. Videos can be at most 20 MB."
+
+        _ ->
+            "Couldn't upload the file (error " ++ String.fromInt status ++ "). Try again."
 
 
 {-| Every message in a DRF error body, however deeply nested.
@@ -515,5 +588,12 @@ main =
         { init = init
         , update = updateAndGuard
         , view = view
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Editor.uploadsInProgress model.editor
+        |> List.map (\target -> Http.track (Editor.uploadKey target) (GotUploadProgress target))
+        |> Sub.batch
