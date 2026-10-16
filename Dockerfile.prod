@@ -49,7 +49,9 @@ COPY --from=builder --chown=django:django /root/.local /home/django/.local
 COPY --chown=django:django . .
 COPY --from=elm-builder --chown=django:django /elm/page_editor.js /elm/visits_chart.js static/js/
 
-RUN mkdir -p /app/staticfiles && chown django:django /app/staticfiles
+# /app/media is where the media_data volume mounts. A new named volume
+# copies this folder's ownership, so the django user can write uploads.
+RUN mkdir -p /app/staticfiles /app/media && chown django:django /app/staticfiles /app/media
 
 USER django
 

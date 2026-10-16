@@ -30,6 +30,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linktree}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
+    volumes:
+      - media_data:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -47,6 +49,7 @@ services:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
       - certbot_certs:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
+      - media_data:/app/media:ro
     ports:
       - "80:80"
       - "443:443"
@@ -64,3 +67,4 @@ volumes:
   postgres_data:
   certbot_certs:
   certbot_www:
+  media_data:

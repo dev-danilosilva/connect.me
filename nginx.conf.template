@@ -19,7 +19,8 @@ server {
     listen 443 ssl;
     server_name ${DOMAIN};
 
-    client_max_body_size 20M;
+    # Room for a 20 MB video upload plus multipart overhead (personal_links_manager/media.py).
+    client_max_body_size 25M;
 
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
@@ -29,6 +30,14 @@ server {
 
     location /static/ {
         alias /app/staticfiles/;
+    }
+
+    # Uploaded media. Names are UUIDs and never reused, so caching is safe;
+    # nosniff stops browsers treating a file as anything but its type.
+    location /media/ {
+        alias /app/media/;
+        add_header X-Content-Type-Options nosniff;
+        expires 30d;
     }
 
     location / {

@@ -101,6 +101,9 @@ docker compose -f docker-compose.prod.yml exec web python manage.py createsuperu
 # Run a Django management command
 docker compose -f docker-compose.prod.yml exec web python manage.py <command>
 
+# Delete uploaded media that no page uses (run daily, e.g. from cron)
+docker compose -f docker-compose.prod.yml exec -T web python manage.py prune_media
+
 # Restart after pulling new code
 docker compose -f docker-compose.prod.yml up -d --build
 
@@ -114,5 +117,6 @@ docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ## Known gaps
 
 - No automated database backup/restore is set up — `postgres_data` is a local Docker volume with no offsite replication.
+- Uploaded media (`media_data` volume) isn't backed up either. Losing it breaks every uploaded tile background; the layouts keep their URLs.
 - No CI/CD pipeline; deployment above is manual.
 - Content-Security-Policy and similar headers are not configured. HSTS is: when `DEBUG=False`, Django sends `Strict-Transport-Security` for 30 days with `includeSubDomains` and `preload` (`linktree_project/settings.py`). HSTS is hard to undo once browsers have cached it, and even harder once the domain is on the preload list. Before raising `SECURE_HSTS_SECONDS` or submitting the domain for preload, make sure every subdomain serves HTTPS.
