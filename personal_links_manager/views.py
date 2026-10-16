@@ -1,3 +1,5 @@
+import secrets
+
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.middleware.csrf import get_token
@@ -68,6 +70,9 @@ def page_editor(request, handle):
             "csrfToken": get_token(request),
             "apiBase": "/api/",
             "draftLayout": page.draft_layout,
+            "publishedLayout": page.published_layout,
+            # Seeds the editor's id generator for new sections and items.
+            "idSeed": secrets.randbelow(2**31),
         },
     }
     return render(request, "personal_links_manager/page_editor.html", context)

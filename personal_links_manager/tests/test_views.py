@@ -206,3 +206,5 @@ def test_page_editor_passes_the_draft_layout(client, user):
     response = client.get(reverse("page_editor", args=["with-layout"]))
 
     assert response.context["elm_flags"]["draftLayout"] == page.draft_layout
+    assert response.context["elm_flags"]["publishedLayout"] is None
+    assert isinstance(response.context["elm_flags"]["idSeed"], int)

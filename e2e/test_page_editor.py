@@ -178,3 +178,111 @@ def test_preview_renders_sections_in_the_layouts_order(page, live_server, demo_u
     expect(sections).to_have_count(2)
     expect(sections.nth(0)).to_have_class(re.compile("lp-section--links"))
     expect(sections.nth(1)).to_have_class(re.compile("lp-section--socials"))
+
+
+def open_editor(page, live_server, user, link_page):
+    login(page, live_server, user)
+    page.goto(f"{live_server.url}/dashboard/pages/{link_page.handle}/edit/")
+    expect(page.locator(".editor-sections")).to_be_visible()
+
+
+def test_editing_the_name_updates_the_preview_and_saves_the_draft(
+    page, live_server, demo_user, demo_page
+):
+    open_editor(page, live_server, demo_user, demo_page)
+    status = page.locator(".editor-status")
+    save = page.locator("button.editor-action", has_text="Save")
+    expect(status).to_have_text("Saved · not published yet")
+    expect(save).to_be_disabled()
+
+    page.get_by_label("Name").fill("Grace Hopper")
+
+    expect(page.locator(".preview-frame .lp-name")).to_have_text("Grace Hopper")
+    expect(status).to_have_text("Unsaved changes")
+    save.click()
+    expect(status).to_have_text("Saved · not published yet")
+    expect(save).to_be_disabled()
+
+    demo_page.refresh_from_db()
+    assert demo_page.draft_layout["sections"][0]["displayName"] == "Grace Hopper"
+    page.reload()
+    expect(page.locator(".preview-frame .lp-name")).to_have_text("Grace Hopper")
+
+
+def test_adding_a_link_needs_a_label_and_a_full_url(page, live_server, demo_user, demo_page):
+    open_editor(page, live_server, demo_user, demo_page)
+    save = page.locator("button.editor-action", has_text="Save")
+
+    page.get_by_role("button", name="Add link").click()
+    expect(page.locator(".preview-frame .lp-tile")).to_have_count(1)
+    expect(save).to_be_disabled()
+
+    item = page.locator(".editor-item-open")
+    item.get_by_label("Label").fill("My blog")
+    item.get_by_label("URL").fill("blog.example.com")
+    expect(item.locator(".editor-field-problem")).to_have_text("Start the URL with https://")
+    expect(save).to_be_disabled()
+
+    item.get_by_label("URL").fill("https://blog.example.com")
+    expect(item.locator(".editor-field-problem")).to_have_count(0)
+    expect(page.locator(".preview-frame .lp-tile-label")).to_have_text("My blog")
+    save.click()
+    expect(page.locator(".editor-status")).to_have_text("Saved · not published yet")
+
+    demo_page.refresh_from_db()
+    links = demo_page.draft_layout["sections"][2]["items"]
+    assert [(tile["label"], tile["url"]) for tile in links] == [("My blog", "https://blog.example.com")]
+
+
+def test_publish_saves_unsaved_changes_first(page, live_server, demo_user, demo_page_with_layout):
+    open_editor(page, live_server, demo_user, demo_page_with_layout)
+
+    page.get_by_label("Bio").fill("Countess of Lovelace.")
+    page.locator("button.editor-action", has_text="Publish").click()
+
+    expect(page.locator(".editor-status")).to_have_text("Published")
+    expect(page.locator("button.editor-action", has_text="Publish")).to_be_disabled()
+    demo_page_with_layout.refresh_from_db()
+    assert demo_page_with_layout.published_layout == demo_page_with_layout.draft_layout
+    assert demo_page_with_layout.published_layout["sections"][0]["bio"] == "Countess of Lovelace."
+
+
+def test_sections_and_links_reorder_and_remove(page, live_server, demo_user, demo_page_with_layout):
+    open_editor(page, live_server, demo_user, demo_page_with_layout)
+    preview = page.locator(".preview-frame .lp-page")
+
+    page.get_by_role("button", name="Move Links up").click()
+    sections = preview.locator("> .lp-section")
+    expect(sections.nth(0)).to_have_class(re.compile("lp-section--links"))
+
+    page.get_by_role("button", name="Move Read my latest essay up").click()
+    expect(preview.locator(".lp-tile-label").first).to_have_text("Read my latest essay")
+
+    page.get_by_role("button", name="Remove Newsletter").click()
+    expect(preview.locator(".lp-tile")).to_have_count(4)
+
+    page.locator("button.editor-action", has_text="Save").click()
+    expect(page.locator(".editor-status")).to_have_text("Saved · not published yet")
+    demo_page_with_layout.refresh_from_db()
+    sections = demo_page_with_layout.draft_layout["sections"]
+    assert [s["type"] for s in sections] == ["hero", "links", "socials"]
+    assert [t["label"] for t in sections[1]["items"]] == [
+        "Read my latest essay",
+        "Watch my talk",
+        "Book a call",
+        "Gallery",
+    ]
+
+
+def test_changing_a_tile_background(page, live_server, demo_user, demo_page_with_layout):
+    open_editor(page, live_server, demo_user, demo_page_with_layout)
+
+    page.locator(".editor-item-toggle", has_text="Book a call").click()
+    item = page.locator(".editor-item-open")
+    item.get_by_role("button", name="Image").click()
+    expect(item.get_by_label("Image URL")).to_be_visible()
+    item.get_by_label("Image URL").fill("https://picsum.photos/seed/call/600/600")
+
+    tile = page.locator(".preview-frame .lp-tile", has_text="Book a call")
+    expect(tile).to_have_class(re.compile("lp-tile--image"))
+    expect(tile.locator("img")).to_have_attribute("src", "https://picsum.photos/seed/call/600/600")

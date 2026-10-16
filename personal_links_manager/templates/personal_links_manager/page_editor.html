@@ -22,7 +22,20 @@
   <script>
     (function () {
       var flags = JSON.parse(document.getElementById("elm-flags").textContent);
-      Elm.PageEditor.Main.init({ node: document.getElementById("elm-app"), flags: flags });
+      var app = Elm.PageEditor.Main.init({ node: document.getElementById("elm-app"), flags: flags });
+
+      // Ask before leaving while the editor has unsaved changes.
+      function warnBeforeLeaving(event) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+      app.ports.setUnsavedChanges.subscribe(function (unsaved) {
+        if (unsaved) {
+          window.addEventListener("beforeunload", warnBeforeLeaving);
+        } else {
+          window.removeEventListener("beforeunload", warnBeforeLeaving);
+        }
+      });
     })();
   </script>
 {% endblock %}

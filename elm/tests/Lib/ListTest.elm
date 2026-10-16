@@ -1,4 +1,4 @@
-module Lib.ListTest exposing (atSuite)
+module Lib.ListTest exposing (atSuite, moveWhereSuite)
 
 import Expect
 import Fuzz
@@ -29,4 +29,24 @@ atSuite =
                         List.range 0 n
                 in
                 Expect.equal (List.map Just indexes) (List.map (\i -> Lib.List.at i indexes) indexes)
+        ]
+
+
+moveWhereSuite : Test
+moveWhereSuite =
+    describe "Lib.List.moveWhere"
+        [ test "moves an item one place earlier" <|
+            \_ -> Expect.equal [ "b", "a", "c" ] (Lib.List.moveWhere ((==) "b") -1 [ "a", "b", "c" ])
+        , test "moves an item one place later" <|
+            \_ -> Expect.equal [ "a", "c", "b" ] (Lib.List.moveWhere ((==) "b") 1 [ "a", "b", "c" ])
+        , test "leaves the first item when moving earlier" <|
+            \_ -> Expect.equal [ "a", "b", "c" ] (Lib.List.moveWhere ((==) "a") -1 [ "a", "b", "c" ])
+        , test "leaves the last item when moving later" <|
+            \_ -> Expect.equal [ "a", "b", "c" ] (Lib.List.moveWhere ((==) "c") 1 [ "a", "b", "c" ])
+        , test "leaves the list when nothing matches" <|
+            \_ -> Expect.equal [ "a", "b" ] (Lib.List.moveWhere ((==) "z") 1 [ "a", "b" ])
+        , fuzz (Fuzz.list Fuzz.int) "keeps every item" <|
+            \list ->
+                Expect.equal (List.sort list)
+                    (List.sort (Lib.List.moveWhere (\x -> modBy 2 x == 0) 1 list))
         ]

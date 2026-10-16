@@ -1,0 +1,797 @@
+module PageEditor.Editor exposing
+    ( Direction(..)
+    , HeroField(..)
+    , Model
+    , Msg(..)
+    , idGenerator
+    , init
+    , isValid
+    , update
+    , urlProblem
+    , view
+    )
+
+{-| The controls that edit a page's layout: one card per section, in the
+layout's order, holding the fields of the section and its items.
+
+Edits only change `layout` here; PageEditor.Main saves and publishes it.
+Problems with a field (an incomplete URL, a missing label) are shown under
+it, and `isValid` tells Main whether the layout can be saved. Django
+validates again on save.
+
+-}
+
+import Html exposing (Html, button, div, h2, i, input, label, li, option, p, section, select, span, text, textarea, ul)
+import Html.Attributes exposing (attribute, class, classList, disabled, maxlength, placeholder, rows, selected, title, type_, value)
+import Html.Events exposing (onClick, onInput)
+import Lib.List
+import PageEditor.Layout as Layout
+    exposing
+        ( HeroData
+        , Layout
+        , Link
+        , Network(..)
+        , Section
+        , SectionContent(..)
+        , Social
+        , Tile
+        , TileBackground(..)
+        , TileContent(..)
+        )
+import Random
+
+
+type alias Model =
+    { layout : Layout
+
+    -- The link tile whose fields are shown; the others are collapsed.
+    , openTile : Maybe String
+
+    -- For the ids of new items.
+    , seed : Random.Seed
+    }
+
+
+init : Int -> Layout -> Model
+init idSeed layout =
+    { layout = layout
+    , openTile = Nothing
+    , seed = Random.initialSeed idSeed
+    }
+
+
+type Direction
+    = Up
+    | Down
+
+
+type HeroField
+    = DisplayName
+    | Bio
+    | ImageUrl
+
+
+{-| Section and item messages carry the section's id, then the item's.
+-}
+type Msg
+    = MoveSection String Direction
+    | SetHero String HeroField String
+    | AddSocial String
+    | SetSocialNetwork String String Network
+    | SetSocialUrl String String String
+    | AddLink String
+    | SetLinkLabel String String String
+    | SetLinkUrl String String String
+    | SetLinkBackground String String TileBackground
+    | MoveItem String String Direction
+    | RemoveItem String String
+    | ToggleTile String
+
+
+
+-- UPDATE
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        MoveSection sectionId direction ->
+            let
+                layout =
+                    model.layout
+            in
+            { model | layout = { layout | sections = moveById sectionId direction layout.sections } }
+
+        SetHero sectionId field newValue ->
+            mapSection sectionId
+                (\content ->
+                    case content of
+                        Hero hero ->
+                            Hero (setHeroField field newValue hero)
+
+                        other ->
+                            other
+                )
+                model
+
+        AddSocial sectionId ->
+            let
+                ( id, seed ) =
+                    Random.step idGenerator model.seed
+            in
+            { model | seed = seed }
+                |> mapSection sectionId (mapSocials (\socials -> socials ++ [ { id = id, network = Website, url = "" } ]))
+
+        SetSocialNetwork sectionId itemId network ->
+            mapSection sectionId (mapSocials (updateById itemId (\social -> { social | network = network }))) model
+
+        SetSocialUrl sectionId itemId url ->
+            mapSection sectionId (mapSocials (updateById itemId (\social -> { social | url = url }))) model
+
+        AddLink sectionId ->
+            let
+                ( id, seed ) =
+                    Random.step idGenerator model.seed
+
+                tile =
+                    { id = id
+                    , content = LinkTile { label = "", url = "", background = Solid defaultTileColor }
+                    }
+            in
+            { model | seed = seed, openTile = Just id }
+                |> mapSection sectionId (mapTiles (\tiles -> tiles ++ [ tile ]))
+
+        SetLinkLabel sectionId itemId newLabel ->
+            mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | label = newLabel })))) model
+
+        SetLinkUrl sectionId itemId url ->
+            mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | url = url })))) model
+
+        SetLinkBackground sectionId itemId background ->
+            mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | background = background })))) model
+
+        MoveItem sectionId itemId direction ->
+            mapSection sectionId
+                (\content ->
+                    case content of
+                        Socials socials ->
+                            Socials (moveById itemId direction socials)
+
+                        Links tiles ->
+                            Links (moveById itemId direction tiles)
+
+                        other ->
+                            other
+                )
+                model
+
+        RemoveItem sectionId itemId ->
+            mapSection sectionId
+                (\content ->
+                    case content of
+                        Socials socials ->
+                            Socials (removeById itemId socials)
+
+                        Links tiles ->
+                            Links (removeById itemId tiles)
+
+                        other ->
+                            other
+                )
+                model
+
+        ToggleTile itemId ->
+            { model
+                | openTile =
+                    if model.openTile == Just itemId then
+                        Nothing
+
+                    else
+                        Just itemId
+            }
+
+
+defaultTileColor : String
+defaultTileColor =
+    "#4c1d95"
+
+
+setHeroField : HeroField -> String -> HeroData -> HeroData
+setHeroField field newValue hero =
+    case field of
+        DisplayName ->
+            { hero | displayName = newValue }
+
+        Bio ->
+            { hero | bio = newValue }
+
+        ImageUrl ->
+            { hero | imageUrl = newValue }
+
+
+mapSection : String -> (SectionContent -> SectionContent) -> Model -> Model
+mapSection sectionId f model =
+    let
+        layout =
+            model.layout
+    in
+    { model
+        | layout =
+            { layout | sections = updateById sectionId (\s -> { s | content = f s.content }) layout.sections }
+    }
+
+
+mapSocials : (List Social -> List Social) -> SectionContent -> SectionContent
+mapSocials f content =
+    case content of
+        Socials socials ->
+            Socials (f socials)
+
+        other ->
+            other
+
+
+mapTiles : (List Tile -> List Tile) -> SectionContent -> SectionContent
+mapTiles f content =
+    case content of
+        Links tiles ->
+            Links (f tiles)
+
+        other ->
+            other
+
+
+mapLink : (Link -> Link) -> Tile -> Tile
+mapLink f tile =
+    case tile.content of
+        LinkTile link ->
+            { tile | content = LinkTile (f link) }
+
+
+updateById : String -> ({ a | id : String } -> { a | id : String }) -> List { a | id : String } -> List { a | id : String }
+updateById id f =
+    List.map
+        (\item ->
+            if item.id == id then
+                f item
+
+            else
+                item
+        )
+
+
+moveById : String -> Direction -> List { a | id : String } -> List { a | id : String }
+moveById id direction =
+    Lib.List.moveWhere (\item -> item.id == id)
+        (case direction of
+            Up ->
+                -1
+
+            Down ->
+                1
+        )
+
+
+removeById : String -> List { a | id : String } -> List { a | id : String }
+removeById id =
+    List.filter (\item -> item.id /= id)
+
+
+{-| A random (version 4) UUID, the id format the spec requires.
+-}
+idGenerator : Random.Generator String
+idGenerator =
+    Random.list 32 (Random.int 0 15)
+        |> Random.map
+            (\digits ->
+                let
+                    hex =
+                        digits
+                            |> List.indexedMap
+                                (\index digit ->
+                                    -- The version nibble, then the variant bits.
+                                    if index == 12 then
+                                        4
+
+                                    else if index == 16 then
+                                        8 + modBy 4 digit
+
+                                    else
+                                        digit
+                                )
+                            |> List.map hexDigit
+                            |> String.fromList
+                in
+                String.join "-"
+                    [ String.slice 0 8 hex
+                    , String.slice 8 12 hex
+                    , String.slice 12 16 hex
+                    , String.slice 16 20 hex
+                    , String.slice 20 32 hex
+                    ]
+            )
+
+
+hexDigit : Int -> Char
+hexDigit digit =
+    String.toList "0123456789abcdef"
+        |> Lib.List.at digit
+        |> Maybe.withDefault '0'
+
+
+
+-- VALIDATION
+
+
+{-| Why a URL can't be saved, if it can't. A quick check for the editor;
+Django's validation on save is the authority.
+-}
+urlProblem : String -> Maybe String
+urlProblem url =
+    let
+        afterScheme =
+            if String.startsWith "https://" url then
+                Just (String.dropLeft 8 url)
+
+            else if String.startsWith "http://" url then
+                Just (String.dropLeft 7 url)
+
+            else
+                Nothing
+
+        host =
+            Maybe.map (String.split "/" >> List.head >> Maybe.withDefault "") afterScheme
+    in
+    if String.isEmpty (String.trim url) then
+        Just "Enter a URL."
+
+    else
+        case host of
+            Nothing ->
+                Just "Start the URL with https://"
+
+            Just name ->
+                if String.contains "." name && not (String.contains " " url) then
+                    Nothing
+
+                else
+                    Just "Enter a full URL, like https://example.com"
+
+
+optionalUrlProblem : String -> Maybe String
+optionalUrlProblem url =
+    if String.isEmpty url then
+        Nothing
+
+    else
+        urlProblem url
+
+
+labelProblem : String -> Maybe String
+labelProblem linkLabel =
+    if String.isEmpty (String.trim linkLabel) then
+        Just "Give the link a label."
+
+    else
+        Nothing
+
+
+backgroundProblems : TileBackground -> List (Maybe String)
+backgroundProblems background =
+    case background of
+        Solid _ ->
+            []
+
+        Image url ->
+            [ urlProblem url ]
+
+        Video clip ->
+            [ urlProblem clip.src, urlProblem clip.poster ]
+
+
+linkProblems : Link -> List (Maybe String)
+linkProblems link =
+    labelProblem link.label :: urlProblem link.url :: backgroundProblems link.background
+
+
+{-| Whether every field of the layout can be saved.
+-}
+isValid : Layout -> Bool
+isValid layout =
+    layout.sections
+        |> List.concatMap
+            (\s ->
+                case s.content of
+                    Hero hero ->
+                        [ optionalUrlProblem hero.imageUrl ]
+
+                    Socials socials ->
+                        List.map (.url >> urlProblem) socials
+
+                    Links tiles ->
+                        List.concatMap (\tile -> tileProblems tile) tiles
+            )
+        |> List.all ((==) Nothing)
+
+
+tileProblems : Tile -> List (Maybe String)
+tileProblems tile =
+    case tile.content of
+        LinkTile link ->
+            linkProblems link
+
+
+
+-- VIEW
+
+
+view : Model -> Html Msg
+view model =
+    let
+        count =
+            List.length model.layout.sections
+    in
+    div [ class "editor-sections" ]
+        (List.indexedMap (viewSection model count) model.layout.sections)
+
+
+viewSection : Model -> Int -> Int -> Section -> Html Msg
+viewSection model count index sectionData =
+    let
+        ( icon, heading, body ) =
+            case sectionData.content of
+                Hero hero ->
+                    ( "fa-user", "Profile", viewHeroFields sectionData.id hero )
+
+                Socials socials ->
+                    ( "fa-share-nodes", "Social links", viewSocials sectionData.id socials )
+
+                Links tiles ->
+                    ( "fa-link", "Links", viewTiles model sectionData.id tiles )
+    in
+    section [ class "editor-section" ]
+        [ div [ class "editor-section-header" ]
+            [ h2 [ class "editor-section-title" ]
+                [ i [ class ("fa-solid " ++ icon), attribute "aria-hidden" "true" ] []
+                , text heading
+                ]
+            , div [ class "editor-row-actions" ]
+                [ iconButton ("Move " ++ heading ++ " up") "fa-arrow-up" (index > 0) (MoveSection sectionData.id Up)
+                , iconButton ("Move " ++ heading ++ " down") "fa-arrow-down" (index < count - 1) (MoveSection sectionData.id Down)
+                ]
+            ]
+        , div [ class "editor-section-body" ] body
+        ]
+
+
+viewHeroFields : String -> HeroData -> List (Html Msg)
+viewHeroFields sectionId hero =
+    [ textField
+        { label = "Name"
+        , value = hero.displayName
+        , placeholder = "Your name"
+        , maxLength = 80
+        , problem = Nothing
+        , toMsg = SetHero sectionId DisplayName
+        }
+    , label [ class "editor-field" ]
+        [ span [ class "editor-field-label" ] [ text "Bio" ]
+        , textarea
+            [ class "editor-input editor-textarea"
+            , value hero.bio
+            , placeholder "A line or two about you"
+            , maxlength 300
+            , rows 3
+            , onInput (SetHero sectionId Bio)
+            ]
+            []
+        ]
+    , textField
+        { label = "Cover image URL"
+        , value = hero.imageUrl
+        , placeholder = "https://… (optional)"
+        , maxLength = 2000
+        , problem = optionalUrlProblem hero.imageUrl
+        , toMsg = SetHero sectionId ImageUrl
+        }
+    ]
+
+
+viewSocials : String -> List Social -> List (Html Msg)
+viewSocials sectionId socials =
+    let
+        count =
+            List.length socials
+    in
+    [ if List.isEmpty socials then
+        p [ class "editor-empty" ] [ text "No social links yet." ]
+
+      else
+        ul [ class "editor-items" ] (List.indexedMap (viewSocial sectionId count) socials)
+    , addButton "Add social link" (AddSocial sectionId)
+    ]
+
+
+viewSocial : String -> Int -> Int -> Social -> Html Msg
+viewSocial sectionId count index social =
+    li [ class "editor-item" ]
+        [ div [ class "editor-item-header" ]
+            [ select
+                [ class "editor-input editor-select"
+                , attribute "aria-label" "Network"
+                , onInput
+                    (\name ->
+                        SetSocialNetwork sectionId
+                            social.id
+                            (Layout.networkFromName name |> Maybe.withDefault social.network)
+                    )
+                ]
+                (List.map
+                    (\network ->
+                        option [ value (Layout.networkName network), selected (network == social.network) ]
+                            [ text (Layout.networkLabel network) ]
+                    )
+                    Layout.allNetworks
+                )
+            , itemActions (Layout.networkLabel social.network ++ " link") sectionId social.id index count
+            ]
+        , textField
+            { label = "URL"
+            , value = social.url
+            , placeholder = "https://"
+            , maxLength = 2000
+            , problem = urlProblem social.url
+            , toMsg = SetSocialUrl sectionId social.id
+            }
+        ]
+
+
+viewTiles : Model -> String -> List Tile -> List (Html Msg)
+viewTiles model sectionId tiles =
+    let
+        count =
+            List.length tiles
+    in
+    [ if List.isEmpty tiles then
+        p [ class "editor-empty" ] [ text "No links yet." ]
+
+      else
+        ul [ class "editor-items" ] (List.indexedMap (viewTile model sectionId count) tiles)
+    , addButton "Add link" (AddLink sectionId)
+    ]
+
+
+viewTile : Model -> String -> Int -> Int -> Tile -> Html Msg
+viewTile model sectionId count index tile =
+    case tile.content of
+        LinkTile link ->
+            let
+                isOpen =
+                    model.openTile == Just tile.id
+
+                name =
+                    if String.isEmpty (String.trim link.label) then
+                        "Untitled link"
+
+                    else
+                        link.label
+
+                hasProblems =
+                    List.any ((/=) Nothing) (linkProblems link)
+            in
+            li [ class "editor-item", classList [ ( "editor-item-open", isOpen ) ] ]
+                [ div [ class "editor-item-header" ]
+                    [ button
+                        [ class "editor-item-toggle"
+                        , type_ "button"
+                        , attribute "aria-expanded"
+                            (if isOpen then
+                                "true"
+
+                             else
+                                "false"
+                            )
+                        , onClick (ToggleTile tile.id)
+                        ]
+                        [ i [ class "fa-solid fa-chevron-right editor-item-chevron", attribute "aria-hidden" "true" ] []
+                        , span [ class "editor-item-title" ] [ text name ]
+                        , if hasProblems && not isOpen then
+                            i
+                                [ class "fa-solid fa-circle-exclamation editor-item-warning"
+                                , attribute "aria-label" "Has fields to fix"
+                                , title "Has fields to fix"
+                                ]
+                                []
+
+                          else
+                            text ""
+                        ]
+                    , itemActions name sectionId tile.id index count
+                    ]
+                , if isOpen then
+                    div [ class "editor-item-body" ] (viewLinkFields sectionId tile.id link)
+
+                  else
+                    text ""
+                ]
+
+
+viewLinkFields : String -> String -> Link -> List (Html Msg)
+viewLinkFields sectionId itemId link =
+    [ textField
+        { label = "Label"
+        , value = link.label
+        , placeholder = "Read my latest essay"
+        , maxLength = 80
+        , problem = labelProblem link.label
+        , toMsg = SetLinkLabel sectionId itemId
+        }
+    , textField
+        { label = "URL"
+        , value = link.url
+        , placeholder = "https://"
+        , maxLength = 2000
+        , problem = urlProblem link.url
+        , toMsg = SetLinkUrl sectionId itemId
+        }
+    , viewBackgroundFields (SetLinkBackground sectionId itemId) link.background
+    ]
+
+
+viewBackgroundFields : (TileBackground -> Msg) -> TileBackground -> Html Msg
+viewBackgroundFields toMsg background =
+    let
+        kindButton kindLabel isKind newBackground =
+            button
+                [ type_ "button"
+                , classList [ ( "editor-segment", True ), ( "editor-segment-active", isKind ) ]
+                , attribute "aria-pressed"
+                    (if isKind then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                , onClick
+                    (if isKind then
+                        toMsg background
+
+                     else
+                        toMsg newBackground
+                    )
+                ]
+                [ text kindLabel ]
+
+        ( isSolid, isImage, isVideo ) =
+            case background of
+                Solid _ ->
+                    ( True, False, False )
+
+                Image _ ->
+                    ( False, True, False )
+
+                Video _ ->
+                    ( False, False, True )
+
+        fields =
+            case background of
+                Solid color ->
+                    [ label [ class "editor-field editor-color-field" ]
+                        [ span [ class "editor-field-label" ] [ text "Color" ]
+                        , input
+                            [ type_ "color"
+                            , class "editor-color"
+                            , value color
+                            , onInput (\c -> toMsg (Solid c))
+                            ]
+                            []
+                        , span [ class "editor-color-value" ] [ text color ]
+                        ]
+                    ]
+
+                Image url ->
+                    [ textField
+                        { label = "Image URL"
+                        , value = url
+                        , placeholder = "https://"
+                        , maxLength = 2000
+                        , problem = urlProblem url
+                        , toMsg = \u -> toMsg (Image u)
+                        }
+                    ]
+
+                Video clip ->
+                    [ textField
+                        { label = "Video URL"
+                        , value = clip.src
+                        , placeholder = "https://….mp4"
+                        , maxLength = 2000
+                        , problem = urlProblem clip.src
+                        , toMsg = \u -> toMsg (Video { clip | src = u })
+                        }
+                    , textField
+                        { label = "Poster image URL"
+                        , value = clip.poster
+                        , placeholder = "Shown before the video plays"
+                        , maxLength = 2000
+                        , problem = urlProblem clip.poster
+                        , toMsg = \u -> toMsg (Video { clip | poster = u })
+                        }
+                    ]
+    in
+    div [ class "editor-background" ]
+        (div [ class "editor-field" ]
+            [ span [ class "editor-field-label" ] [ text "Background" ]
+            , div [ class "editor-segmented", attribute "role" "group", attribute "aria-label" "Background" ]
+                [ kindButton "Color" isSolid (Solid defaultTileColor)
+                , kindButton "Image" isImage (Image "")
+                , kindButton "Video" isVideo (Video { src = "", poster = "" })
+                ]
+            ]
+            :: fields
+        )
+
+
+
+-- VIEW HELPERS
+
+
+textField :
+    { label : String
+    , value : String
+    , placeholder : String
+    , maxLength : Int
+    , problem : Maybe String
+    , toMsg : String -> Msg
+    }
+    -> Html Msg
+textField config =
+    label [ class "editor-field" ]
+        [ span [ class "editor-field-label" ] [ text config.label ]
+        , input
+            [ type_ "text"
+            , class "editor-input"
+            , classList [ ( "editor-input-invalid", config.problem /= Nothing ) ]
+            , value config.value
+            , placeholder config.placeholder
+            , maxlength config.maxLength
+            , onInput config.toMsg
+            ]
+            []
+        , case config.problem of
+            Just problem ->
+                span [ class "editor-field-problem" ] [ text problem ]
+
+            Nothing ->
+                text ""
+        ]
+
+
+itemActions : String -> String -> String -> Int -> Int -> Html Msg
+itemActions name sectionId itemId index count =
+    div [ class "editor-row-actions" ]
+        [ iconButton ("Move " ++ name ++ " up") "fa-arrow-up" (index > 0) (MoveItem sectionId itemId Up)
+        , iconButton ("Move " ++ name ++ " down") "fa-arrow-down" (index < count - 1) (MoveItem sectionId itemId Down)
+        , iconButton ("Remove " ++ name) "fa-trash-can" True (RemoveItem sectionId itemId)
+        ]
+
+
+iconButton : String -> String -> Bool -> Msg -> Html Msg
+iconButton description icon enabled msg =
+    button
+        [ type_ "button"
+        , class "editor-icon-button"
+        , attribute "aria-label" description
+        , title description
+        , disabled (not enabled)
+        , onClick msg
+        ]
+        [ i [ class ("fa-solid " ++ icon), attribute "aria-hidden" "true" ] [] ]
+
+
+addButton : String -> Msg -> Html Msg
+addButton description msg =
+    button [ type_ "button", class "editor-add-button", onClick msg ]
+        [ i [ class "fa-solid fa-plus", attribute "aria-hidden" "true" ] []
+        , text description
+        ]

@@ -9,10 +9,13 @@ module PageEditor.Layout exposing
     , Tile
     , TileBackground(..)
     , TileContent(..)
+    , allNetworks
     , decoder
     , encode
+    , networkFromName
     , networkIcon
     , networkLabel
+    , networkName
     )
 
 {-| A page's layout, spec version 1 (docs/page-layout-spec-v1.md).
@@ -149,6 +152,20 @@ networkInfo network =
             { name = "website", icon = "fa-solid fa-globe", label = "Website" }
 
 
+{-| The network's name in the spec, e.g. "github".
+-}
+networkName : Network -> String
+networkName network =
+    network
+        |> networkInfo
+        |> .name
+
+
+networkFromName : String -> Maybe Network
+networkFromName name =
+    List.filter (\network -> networkName network == name) allNetworks |> List.head
+
+
 {-| Font Awesome classes for the network's icon, e.g. "fa-brands fa-github".
 -}
 networkIcon : Network -> String
@@ -226,11 +243,11 @@ networkDecoder =
     Decode.string
         |> Decode.andThen
             (\name ->
-                case List.filter (\network -> (networkInfo network).name == name) allNetworks of
-                    network :: _ ->
+                case networkFromName name of
+                    Just network ->
                         Decode.succeed network
 
-                    [] ->
+                    Nothing ->
                         Decode.fail ("Unknown network " ++ name)
             )
 
@@ -314,7 +331,7 @@ encodeSocial : Social -> Encode.Value
 encodeSocial social =
     Encode.object
         [ ( "id", Encode.string social.id )
-        , ( "network", Encode.string (networkInfo social.network).name )
+        , ( "network", Encode.string (networkName social.network) )
         , ( "url", Encode.string social.url )
         ]
 
