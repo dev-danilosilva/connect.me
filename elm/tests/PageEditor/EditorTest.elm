@@ -228,6 +228,38 @@ suite =
                     Editor.uploadFinished videoSrc (Ok "https://x.example/media/a.mp4") removed
                         |> .layout
                         |> Expect.equal removed.layout
+             , test "removing a tile drops its upload, so it no longer blocks saving" <|
+                \_ ->
+                    start
+                        |> Editor.uploadStarted videoSrc
+                        |> Editor.update (RemoveItem "links" "b")
+                        |> Editor.isUploading
+                        |> Expect.equal False
+             , test "switching the background to another kind drops its upload" <|
+                \_ ->
+                    start
+                        |> Editor.uploadStarted videoSrc
+                        |> Editor.update (SetLinkBackground "links" "b" (Solid "#112233"))
+                        |> Editor.isUploading
+                        |> Expect.equal False
+             , test "editing the same kind of background keeps its upload" <|
+                \_ ->
+                    start
+                        |> Editor.uploadStarted videoSrc
+                        |> Editor.update (SetLinkBackground "links" "b" (Video { src = "", poster = "https://b.example/p.png" }))
+                        |> Editor.isUploading
+                        |> Expect.equal True
+             , test "a dropped upload that still answers changes nothing" <|
+                \_ ->
+                    let
+                        switchedBack =
+                            start
+                                |> Editor.uploadStarted videoSrc
+                                |> Editor.update (SetLinkBackground "links" "b" (Solid "#112233"))
+                                |> Editor.update (SetLinkBackground "links" "b" oldVideo)
+                    in
+                    Editor.uploadFinished videoSrc (Err "Couldn't reach the server.") switchedBack
+                        |> Expect.equal switchedBack
              , test "slots map to the server's kinds" <|
                 \_ ->
                     List.map Editor.slotKind [ VideoSrc, VideoPoster, ImageSrc ]

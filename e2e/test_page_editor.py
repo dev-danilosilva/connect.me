@@ -332,3 +332,24 @@ def test_a_rejected_upload_shows_the_servers_message(
     choose_file(page, item.get_by_role("button", name="Upload a video file"), "photo.mp4", "video/mp4", media_samples.HEIC)
 
     expect(item.locator(".editor-field-problem")).to_have_text("Upload an MP4 or WebM video.")
+
+
+def test_removing_a_tile_mid_upload_unblocks_saving(
+    page, live_server, demo_user, demo_page_with_layout
+):
+    open_editor(page, live_server, demo_user, demo_page_with_layout)
+    # The upload never finishes, like a big file on a slow connection.
+    page.route("**/api/media/", lambda route: None)
+    page.locator(".editor-item-toggle", has_text="Watch my talk").click()
+    item = page.locator(".editor-item-open")
+    save = page.locator("button.editor-action", has_text="Save")
+    status = page.locator(".editor-status")
+
+    choose_file(page, item.get_by_role("button", name="Upload a video file"), "talk.mp4", "video/mp4", media_samples.MP4)
+    expect(status).to_have_text("Uploading…")
+    expect(save).to_be_disabled()
+
+    page.get_by_role("button", name="Remove Watch my talk").click()
+
+    expect(status).to_have_text("Unsaved changes")
+    expect(save).to_be_enabled()

@@ -218,7 +218,22 @@ update msg model =
             ( model, File.Select.file (Editor.acceptedTypes target.slot) (FileChosen target) )
 
         EditorMsg editorMsg ->
-            ( { model | editor = Editor.update editorMsg model.editor }, Cmd.none )
+            let
+                editor =
+                    Editor.update editorMsg model.editor
+
+                stillUploading =
+                    Editor.uploadsInProgress editor
+
+                -- Uploads the editor dropped (their tile was removed or
+                -- changed kind) are cancelled.
+                dropped =
+                    List.filter (\target -> not (List.member target stillUploading))
+                        (Editor.uploadsInProgress model.editor)
+            in
+            ( { model | editor = editor }
+            , Cmd.batch (List.map (Editor.uploadKey >> Http.cancel) dropped)
+            )
 
         Save ->
             if canSave model then
@@ -508,7 +523,10 @@ viewActions model =
                     ( message, True )
 
                 Idle ->
-                    if hasUnsavedChanges model then
+                    if Editor.isUploading model.editor then
+                        ( "Uploading…", False )
+
+                    else if hasUnsavedChanges model then
                         if Editor.isValid model.editor.layout then
                             ( "Unsaved changes", False )
 

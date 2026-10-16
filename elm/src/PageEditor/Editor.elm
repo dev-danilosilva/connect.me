@@ -133,6 +133,11 @@ type Msg
 
 update : Msg -> Model -> Model
 update msg model =
+    apply msg model |> dropStaleUploads
+
+
+apply : Msg -> Model -> Model
+apply msg model =
     case msg of
         MoveSection sectionId direction ->
             let
@@ -187,7 +192,8 @@ update msg model =
             mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | url = url })))) model
 
         SetLinkBackground sectionId itemId background ->
-            -- An edit clears the tile's failed uploads; ones in progress stay.
+            -- An edit clears the tile's failed uploads; ones in progress stay
+            -- while the background is still of their kind (dropStaleUploads).
             { model | uploads = Dict.filter (\_ upload -> upload.target.itemId /= itemId || isInProgress upload.state) model.uploads }
                 |> mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | background = background }))))
 
@@ -332,14 +338,18 @@ background of that kind; or keeps the error to show under the field.
 -}
 uploadFinished : UploadTarget -> Result String String -> Model -> Model
 uploadFinished target result model =
-    case result of
-        Ok url ->
+    case ( uploadState model target, result ) of
+        ( Just (Uploading _), Ok url ) ->
             { model | uploads = Dict.remove (uploadKey target) model.uploads }
                 |> mapSection target.sectionId
                     (mapTiles (updateById target.itemId (mapLink (\link -> { link | background = fillSlot target.slot url link.background }))))
 
-        Err message ->
+        ( Just (Uploading _), Err message ) ->
             { model | uploads = Dict.insert (uploadKey target) { target = target, state = UploadFailed message } model.uploads }
+
+        -- Dropped by dropStaleUploads; its tile has moved on.
+        _ ->
+            model
 
 
 fillSlot : Slot -> String -> TileBackground -> TileBackground
@@ -356,6 +366,53 @@ fillSlot slot url background =
 
         _ ->
             background
+
+
+{-| Forgets uploads whose tile was removed or whose background is no longer
+of their kind: nothing shows them any more, so they mustn't block saving.
+PageEditor.Main cancels their requests.
+-}
+dropStaleUploads : Model -> Model
+dropStaleUploads model =
+    let
+        fits upload =
+            case ( upload.target.slot, linkBackground upload.target model.layout ) of
+                ( VideoSrc, Just (Video _) ) ->
+                    True
+
+                ( VideoPoster, Just (Video _) ) ->
+                    True
+
+                ( ImageSrc, Just (Image _) ) ->
+                    True
+
+                _ ->
+                    False
+    in
+    { model | uploads = Dict.filter (\_ upload -> fits upload) model.uploads }
+
+
+linkBackground : UploadTarget -> Layout -> Maybe TileBackground
+linkBackground target layout =
+    layout.sections
+        |> List.filter (\section -> section.id == target.sectionId)
+        |> List.concatMap
+            (\section ->
+                case section.content of
+                    Links tiles ->
+                        tiles
+
+                    _ ->
+                        []
+            )
+        |> List.filter (\tile -> tile.id == target.itemId)
+        |> List.map
+            (\tile ->
+                case tile.content of
+                    LinkTile link ->
+                        link.background
+            )
+        |> List.head
 
 
 uploadsInProgress : Model -> List UploadTarget
