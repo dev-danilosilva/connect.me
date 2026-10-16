@@ -1,6 +1,10 @@
+import uuid
+
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 from . import layout
 from .utils import HANDLE_RE, humanize_handle
@@ -39,3 +43,34 @@ class LinkPage(models.Model):
         if not self.draft_layout:
             self.draft_layout = layout.default_layout(self)
         super().save(*args, **kwargs)
+
+
+class MediaAsset(models.Model):
+    """A video or image a user uploaded (personal_links_manager/media.py).
+    Layouts reference it by its URL, like any pasted link."""
+
+    KIND_CHOICES = [("video", "Video"), ("image", "Image")]
+
+    # Also the file's name, so media URLs can't be guessed.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="media_assets"
+    )
+    kind = models.CharField(max_length=5, choices=KIND_CHOICES)
+    file = models.FileField()
+    content_type = models.CharField(max_length=50)
+    size_bytes = models.PositiveBigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return self.file.name
+
+
+# A signal rather than delete(): it also runs for queryset deletes and for
+# cascades from a deleted user, so no path leaves files on disk.
+@receiver(post_delete, sender=MediaAsset)
+def delete_media_file(sender, instance, **kwargs):
+    instance.file.delete(save=False)
