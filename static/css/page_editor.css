@@ -550,3 +550,42 @@
     padding: 16px;
   }
 }
+
+/* A URL field with its Upload button (Editor.mediaField). */
+.editor-media-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.editor-media-label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.editor-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-outline);
+  border-radius: 12px;
+  background: var(--color-surface-container);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-on-surface);
+  cursor: pointer;
+}
+
+.editor-upload-button:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.editor-upload-button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}

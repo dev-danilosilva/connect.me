@@ -1,7 +1,7 @@
 module PageEditor.EditorTest exposing (suite)
 
 import Expect
-import PageEditor.Editor as Editor exposing (Direction(..), HeroField(..), Msg(..))
+import PageEditor.Editor as Editor exposing (Direction(..), HeroField(..), Msg(..), Slot(..))
 import PageEditor.Layout exposing (Layout, Network(..), SectionContent(..), TileBackground(..), TileContent(..))
 import Random
 import Test exposing (Test, describe, test)
@@ -16,7 +16,7 @@ layout =
           , content =
                 Links
                     [ { id = "a", content = LinkTile { label = "A", url = "https://a.example", background = Solid "#000000" } }
-                    , { id = "b", content = LinkTile { label = "B", url = "https://b.example", background = Solid "#000000" } }
+                    , { id = "b", content = LinkTile { label = "B", url = "https://b.example", background = Video { src = "https://b.example/old.mp4", poster = "https://b.example/old.png" } } }
                     ]
           }
         ]
@@ -137,6 +137,103 @@ suite =
                     |> Expect.equal True
         , test "the sample layout is valid" <|
             \_ -> Expect.equal True (Editor.isValid layout)
+
+        , describe "uploads"
+            (let
+                videoSrc =
+                    { sectionId = "links", itemId = "b", slot = VideoSrc }
+
+                poster =
+                    { sectionId = "links", itemId = "b", slot = VideoPoster }
+
+                start =
+                    Editor.init 42 layout
+
+                oldVideo =
+                    Video { src = "https://b.example/old.mp4", poster = "https://b.example/old.png" }
+
+                backgroundOf id model =
+                    model.layout.sections
+                        |> List.concatMap
+                            (\section ->
+                                case section.content of
+                                    Links tiles ->
+                                        tiles
+
+                                    _ ->
+                                        []
+                            )
+                        |> List.filter (\tile -> tile.id == id)
+                        |> List.map
+                            (\tile ->
+                                case tile.content of
+                                    LinkTile link ->
+                                        link.background
+                            )
+                        |> List.head
+             in
+             [ test "a started upload blocks saving until it finishes" <|
+                \_ ->
+                    let
+                        uploading =
+                            Editor.uploadStarted videoSrc start
+                    in
+                    Expect.equal
+                        ( Editor.isUploading uploading
+                        , Editor.isUploading (Editor.uploadFinished videoSrc (Ok "https://x.example/media/a.mp4") uploading)
+                        )
+                        ( True, False )
+             , test "a finished upload fills its slot" <|
+                \_ ->
+                    start
+                        |> Editor.uploadStarted videoSrc
+                        |> Editor.uploadFinished videoSrc (Ok "https://x.example/media/a.mp4")
+                        |> Editor.uploadStarted poster
+                        |> Editor.uploadFinished poster (Ok "https://x.example/media/p.png")
+                        |> backgroundOf "b"
+                        |> Expect.equal (Just (Video { src = "https://x.example/media/a.mp4", poster = "https://x.example/media/p.png" }))
+             , test "progress is tracked per slot" <|
+                \_ ->
+                    start
+                        |> Editor.uploadStarted videoSrc
+                        |> Editor.uploadProgress videoSrc 42
+                        |> Editor.uploadsInProgress
+                        |> Expect.equal [ videoSrc ]
+             , test "a failed upload keeps the field and stops blocking saves" <|
+                \_ ->
+                    let
+                        failed =
+                            start
+                                |> Editor.uploadStarted videoSrc
+                                |> Editor.uploadFinished videoSrc (Err "Videos can be at most 20 MB.")
+                    in
+                    Expect.equal ( backgroundOf "b" failed, Editor.isUploading failed )
+                        ( Just oldVideo, False )
+             , test "an upload that finishes after the background changed kind is dropped" <|
+                \_ ->
+                    start
+                        |> Editor.uploadStarted videoSrc
+                        |> Editor.update (SetLinkBackground "links" "b" (Solid "#112233"))
+                        |> Editor.uploadFinished videoSrc (Ok "https://x.example/media/a.mp4")
+                        |> backgroundOf "b"
+                        |> Expect.equal (Just (Solid "#112233"))
+             , test "an upload that finishes after its tile was removed changes nothing" <|
+                \_ ->
+                    let
+                        removed =
+                            start
+                                |> Editor.uploadStarted videoSrc
+                                |> Editor.update (RemoveItem "links" "b")
+                    in
+                    Editor.uploadFinished videoSrc (Ok "https://x.example/media/a.mp4") removed
+                        |> .layout
+                        |> Expect.equal removed.layout
+             , test "slots map to the server's kinds" <|
+                \_ ->
+                    List.map Editor.slotKind [ VideoSrc, VideoPoster, ImageSrc ]
+                        |> Expect.equal [ "video", "image", "image" ]
+             ]
+            )
         , describe "urlProblem"
             [ test "accepts an https URL" <|
                 \_ -> Expect.equal Nothing (Editor.urlProblem "https://example.com/a")
@@ -150,5 +247,10 @@ suite =
                 \_ -> Expect.notEqual Nothing (Editor.urlProblem "javascript:alert(1)")
             , test "asks for a full host" <|
                 \_ -> Expect.notEqual Nothing (Editor.urlProblem "https://example")
+            , test "accepts localhost, which uploads return in development" <|
+                \_ ->
+                    List.map Editor.urlProblem
+                        [ "http://localhost:8000/media/a.mp4", "http://localhost/media/a.mp4", "https://localhost" ]
+                        |> Expect.equal [ Nothing, Nothing, Nothing ]
             ]
         ]

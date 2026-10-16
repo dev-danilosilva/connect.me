@@ -3,10 +3,21 @@ module PageEditor.Editor exposing
     , HeroField(..)
     , Model
     , Msg(..)
+    , Slot(..)
+    , UploadState(..)
+    , UploadTarget
+    , acceptedTypes
     , idGenerator
     , init
+    , isUploading
     , isValid
+    , slotKind
     , update
+    , uploadFinished
+    , uploadKey
+    , uploadProgress
+    , uploadStarted
+    , uploadsInProgress
     , urlProblem
     , view
     )
@@ -21,6 +32,7 @@ validates again on save.
 
 -}
 
+import Dict exposing (Dict)
 import Html exposing (Html, button, div, h2, i, input, label, li, option, p, section, select, span, text, textarea, ul)
 import Html.Attributes exposing (attribute, class, classList, disabled, maxlength, placeholder, rows, selected, title, type_, value)
 import Html.Events exposing (onClick, onInput)
@@ -49,6 +61,10 @@ type alias Model =
 
     -- For the ids of new items.
     , seed : Random.Seed
+
+    -- Uploads in progress or failed, by uploadKey. PageEditor.Main sends
+    -- the requests and reports back through uploadProgress/uploadFinished.
+    , uploads : Dict String { target : UploadTarget, state : UploadState }
     }
 
 
@@ -57,7 +73,28 @@ init idSeed layout =
     { layout = layout
     , openTile = Nothing
     , seed = Random.initialSeed idSeed
+    , uploads = Dict.empty
     }
+
+
+{-| A background field a file can be uploaded into.
+-}
+type Slot
+    = VideoSrc
+    | VideoPoster
+    | ImageSrc
+
+
+type alias UploadTarget =
+    { sectionId : String
+    , itemId : String
+    , slot : Slot
+    }
+
+
+type UploadState
+    = Uploading Int
+    | UploadFailed String
 
 
 type Direction
@@ -86,6 +123,8 @@ type Msg
     | MoveItem String String Direction
     | RemoveItem String String
     | ToggleTile String
+      -- Handled by PageEditor.Main, which picks the file and uploads it.
+    | RequestUpload UploadTarget
 
 
 
@@ -148,7 +187,9 @@ update msg model =
             mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | url = url })))) model
 
         SetLinkBackground sectionId itemId background ->
-            mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | background = background })))) model
+            -- An edit clears the tile's failed uploads; ones in progress stay.
+            { model | uploads = Dict.filter (\_ upload -> upload.target.itemId /= itemId || isInProgress upload.state) model.uploads }
+                |> mapSection sectionId (mapTiles (updateById itemId (mapLink (\link -> { link | background = background }))))
 
         MoveItem sectionId itemId direction ->
             mapSection sectionId
@@ -180,6 +221,9 @@ update msg model =
                 )
                 model
 
+        RequestUpload _ ->
+            model
+
         ToggleTile itemId ->
             { model
                 | openTile =
@@ -194,6 +238,125 @@ update msg model =
 defaultTileColor : String
 defaultTileColor =
     "#4c1d95"
+
+
+
+-- UPLOADS
+
+
+uploadKey : UploadTarget -> String
+uploadKey target =
+    target.itemId ++ "/" ++ slotName target.slot
+
+
+slotName : Slot -> String
+slotName slot =
+    case slot of
+        VideoSrc ->
+            "video-src"
+
+        VideoPoster ->
+            "video-poster"
+
+        ImageSrc ->
+            "image-src"
+
+
+{-| The `kind` the upload endpoint checks the file against.
+-}
+slotKind : Slot -> String
+slotKind slot =
+    case slot of
+        VideoSrc ->
+            "video"
+
+        _ ->
+            "image"
+
+
+{-| What the file picker offers; the server checks the bytes anyway.
+-}
+acceptedTypes : Slot -> List String
+acceptedTypes slot =
+    case slot of
+        VideoSrc ->
+            [ "video/mp4", "video/webm" ]
+
+        _ ->
+            [ "image/jpeg", "image/png", "image/webp" ]
+
+
+isInProgress : UploadState -> Bool
+isInProgress state =
+    case state of
+        Uploading _ ->
+            True
+
+        UploadFailed _ ->
+            False
+
+
+uploadStarted : UploadTarget -> Model -> Model
+uploadStarted target model =
+    { model | uploads = Dict.insert (uploadKey target) { target = target, state = Uploading 0 } model.uploads }
+
+
+uploadProgress : UploadTarget -> Int -> Model -> Model
+uploadProgress target percent model =
+    { model
+        | uploads =
+            Dict.update (uploadKey target)
+                (Maybe.map (\upload -> { upload | state = Uploading percent }))
+                model.uploads
+    }
+
+
+{-| Puts an uploaded file's URL into its slot, if the tile still has a
+background of that kind; or keeps the error to show under the field.
+-}
+uploadFinished : UploadTarget -> Result String String -> Model -> Model
+uploadFinished target result model =
+    case result of
+        Ok url ->
+            { model | uploads = Dict.remove (uploadKey target) model.uploads }
+                |> mapSection target.sectionId
+                    (mapTiles (updateById target.itemId (mapLink (\link -> { link | background = fillSlot target.slot url link.background }))))
+
+        Err message ->
+            { model | uploads = Dict.insert (uploadKey target) { target = target, state = UploadFailed message } model.uploads }
+
+
+fillSlot : Slot -> String -> TileBackground -> TileBackground
+fillSlot slot url background =
+    case ( slot, background ) of
+        ( VideoSrc, Video clip ) ->
+            Video { clip | src = url }
+
+        ( VideoPoster, Video clip ) ->
+            Video { clip | poster = url }
+
+        ( ImageSrc, Image _ ) ->
+            Image url
+
+        _ ->
+            background
+
+
+uploadsInProgress : Model -> List UploadTarget
+uploadsInProgress model =
+    Dict.values model.uploads
+        |> List.filter (.state >> isInProgress)
+        |> List.map .target
+
+
+isUploading : Model -> Bool
+isUploading model =
+    not (List.isEmpty (uploadsInProgress model))
+
+
+uploadState : Model -> UploadTarget -> Maybe UploadState
+uploadState model target =
+    Dict.get (uploadKey target) model.uploads |> Maybe.map .state
 
 
 setHeroField : HeroField -> String -> HeroData -> HeroData
@@ -351,11 +514,18 @@ urlProblem url =
                 Just "Start the URL with https://"
 
             Just name ->
-                if String.contains "." name && not (String.contains " " url) then
+                -- localhost: uploads return the server's own URL, which is
+                -- localhost in development.
+                if (String.contains "." name || isLocalhost name) && not (String.contains " " url) then
                     Nothing
 
                 else
                     Just "Enter a full URL, like https://example.com"
+
+
+isLocalhost : String -> Bool
+isLocalhost host =
+    host == "localhost" || String.startsWith "localhost:" host
 
 
 optionalUrlProblem : String -> Maybe String
@@ -609,15 +779,15 @@ viewTile model sectionId count index tile =
                     , itemActions name sectionId tile.id index count
                     ]
                 , if isOpen then
-                    div [ class "editor-item-body" ] (viewLinkFields sectionId tile.id link)
+                    div [ class "editor-item-body" ] (viewLinkFields model sectionId tile.id link)
 
                   else
                     text ""
                 ]
 
 
-viewLinkFields : String -> String -> Link -> List (Html Msg)
-viewLinkFields sectionId itemId link =
+viewLinkFields : Model -> String -> String -> Link -> List (Html Msg)
+viewLinkFields model sectionId itemId link =
     [ textField
         { label = "Label"
         , value = link.label
@@ -634,13 +804,19 @@ viewLinkFields sectionId itemId link =
         , problem = urlProblem link.url
         , toMsg = SetLinkUrl sectionId itemId
         }
-    , viewBackgroundFields (SetLinkBackground sectionId itemId) link.background
+    , viewBackgroundFields model sectionId itemId link.background
     ]
 
 
-viewBackgroundFields : (TileBackground -> Msg) -> TileBackground -> Html Msg
-viewBackgroundFields toMsg background =
+viewBackgroundFields : Model -> String -> String -> TileBackground -> Html Msg
+viewBackgroundFields model sectionId itemId background =
     let
+        toMsg =
+            SetLinkBackground sectionId itemId
+
+        target slot =
+            { sectionId = sectionId, itemId = itemId, slot = slot }
+
         kindButton kindLabel isKind newBackground =
             button
                 [ type_ "button"
@@ -690,31 +866,28 @@ viewBackgroundFields toMsg background =
                     ]
 
                 Image url ->
-                    [ textField
+                    [ mediaField model
+                        (target ImageSrc)
                         { label = "Image URL"
                         , value = url
                         , placeholder = "https://"
-                        , maxLength = 2000
-                        , problem = urlProblem url
                         , toMsg = \u -> toMsg (Image u)
                         }
                     ]
 
                 Video clip ->
-                    [ textField
+                    [ mediaField model
+                        (target VideoSrc)
                         { label = "Video URL"
                         , value = clip.src
                         , placeholder = "https://….mp4"
-                        , maxLength = 2000
-                        , problem = urlProblem clip.src
                         , toMsg = \u -> toMsg (Video { clip | src = u })
                         }
-                    , textField
+                    , mediaField model
+                        (target VideoPoster)
                         { label = "Poster image URL"
                         , value = clip.poster
                         , placeholder = "Shown before the video plays"
-                        , maxLength = 2000
-                        , problem = urlProblem clip.poster
                         , toMsg = \u -> toMsg (Video { clip | poster = u })
                         }
                     ]
@@ -761,6 +934,81 @@ textField config =
         , case config.problem of
             Just problem ->
                 span [ class "editor-field-problem" ] [ text problem ]
+
+            Nothing ->
+                text ""
+        ]
+
+
+{-| A URL field with an Upload button beside it. While uploading, the
+field is locked and the button shows progress; a failed upload's message
+replaces the URL problem until the next edit.
+-}
+mediaField :
+    Model
+    -> UploadTarget
+    -> { label : String, value : String, placeholder : String, toMsg : String -> Msg }
+    -> Html Msg
+mediaField model target config =
+    let
+        state =
+            uploadState model target
+
+        uploading =
+            case state of
+                Just (Uploading percent) ->
+                    Just percent
+
+                _ ->
+                    Nothing
+
+        problem =
+            case state of
+                Just (UploadFailed message) ->
+                    Just message
+
+                Just (Uploading _) ->
+                    Nothing
+
+                Nothing ->
+                    urlProblem config.value
+    in
+    div [ class "editor-field" ]
+        [ div [ class "editor-media-row" ]
+            [ label [ class "editor-media-label" ]
+                [ span [ class "editor-field-label" ] [ text config.label ]
+                , input
+                    [ type_ "text"
+                    , class "editor-input"
+                    , classList [ ( "editor-input-invalid", problem /= Nothing ) ]
+                    , value config.value
+                    , placeholder config.placeholder
+                    , maxlength 2000
+                    , disabled (uploading /= Nothing)
+                    , onInput config.toMsg
+                    ]
+                    []
+                ]
+            , button
+                [ type_ "button"
+                , class "editor-upload-button"
+                , attribute "aria-label" ("Upload " ++ String.toLower config.label)
+                , disabled (uploading /= Nothing)
+                , onClick (RequestUpload target)
+                ]
+                (case uploading of
+                    Just percent ->
+                        [ text ("Uploading… " ++ String.fromInt percent ++ "%") ]
+
+                    Nothing ->
+                        [ i [ class "fa-solid fa-arrow-up-from-bracket", attribute "aria-hidden" "true" ] []
+                        , text "Upload"
+                        ]
+                )
+            ]
+        , case problem of
+            Just message ->
+                span [ class "editor-field-problem" ] [ text message ]
 
             Nothing ->
                 text ""
