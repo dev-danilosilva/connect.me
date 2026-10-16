@@ -9,17 +9,18 @@ module PageEditor.Main exposing
 {-| The page editor program (/dashboard/pages/<handle>/edit/): a live preview
 of the link page beside its editing controls.
 
-Started from page_editor.html with `Elm.PageEditor.Main.init`; compiled to
-static/js/page_editor.js.
+Started from page\_editor.html with `Elm.PageEditor.Main.init`; compiled to
+static/js/page\_editor.js.
 
 -}
 
 import Browser
-import Html exposing (Html, a, button, div, h1, i, li, nav, ol, p, span, text)
+import Html exposing (Html, a, button, div, h1, i, li, nav, ol, p, text)
 import Html.Attributes exposing (attribute, class, classList, href, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode exposing (Decoder)
-import PageEditor.PagePreview as PagePreview
+import PageEditor.Layout as Layout exposing (Layout)
+import PageEditor.Preview as Preview
 
 
 type alias Flags =
@@ -29,18 +30,20 @@ type alias Flags =
     , username : String
     , csrfToken : String
     , apiBase : String
+    , draftLayout : Layout
     }
 
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    Decode.map6 Flags
+    Decode.map7 Flags
         (Decode.field "pageId" Decode.int)
         (Decode.field "handle" Decode.string)
         (Decode.field "title" Decode.string)
         (Decode.field "username" Decode.string)
         (Decode.field "csrfToken" Decode.string)
         (Decode.field "apiBase" Decode.string)
+        (Decode.field "draftLayout" Layout.decoder)
 
 
 type Device
@@ -80,15 +83,16 @@ init flagsJson =
 
         Err _ ->
             ( { flags =
-                { pageId = 0
-                , handle = ""
-                , title = ""
-                , username = ""
-                , csrfToken = ""
-                , apiBase = ""
-                }
-            , device = Desktop
-            }
+                    { pageId = 0
+                    , handle = ""
+                    , title = ""
+                    , username = ""
+                    , csrfToken = ""
+                    , apiBase = ""
+                    , draftLayout = { sections = [] }
+                    }
+              , device = Desktop
+              }
             , Cmd.none
             )
 
@@ -144,7 +148,7 @@ viewPreview model =
             [ class "preview-frame"
             , style "width" (deviceWidth model.device |> Maybe.map (\w -> String.fromInt w ++ "px") |> Maybe.withDefault "100%")
             ]
-            [ PagePreview.view PagePreview.dummy ]
+            [ Preview.view model.flags.draftLayout ]
         ]
 
 
@@ -186,9 +190,11 @@ viewBreadcrumbs flags =
             ]
         ]
 
+
 view : Model -> Html Msg
 view model =
-    div [ class "editor-shell"
+    div
+        [ class "editor-shell"
         ]
         [ viewPreview model
         , viewControls model

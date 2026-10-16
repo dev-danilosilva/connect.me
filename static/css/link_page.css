@@ -1,6 +1,6 @@
 /*
  * Link page: the public page visitors see, also rendered in the editor's
- * preview (elm/src/LinkPage.elm).
+ * preview (elm/src/PageEditor/Preview.elm).
  *
  * Isolation rules, so this file can later be shared with the public page
  * unchanged:
@@ -45,16 +45,16 @@
   --lp-social-size: 22px;
 
   /* ---- Theme tokens: link tiles ---- */
-  /* Each tile paints its own background (color, gradient, image or video);
+  /* Each tile paints its own background (color, image or video);
      this is only the fallback while an image or video loads. */
   --lp-tile-fallback-background: #4c1d95;
   --lp-tile-text-color: #ffffff;
   --lp-tile-gap: 12px;
   --lp-tile-radius: 18px;
   --lp-tile-shadow: 0 6px 18px rgba(76, 29, 149, 0.16);
-  --lp-tile-hover-shadow: 0 18px 36px -8px rgba(76, 29, 149, 0.38);
   --lp-tile-label-font-size: 15px;
   --lp-tile-label-font-weight: 700;
+  --lp-tile-label-hover-font-weight: 800;
   /* Darkens the bottom of image and video tiles so the label stays
      readable on any picture. */
   --lp-tile-media-overlay: linear-gradient(180deg, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.7) 100%);
@@ -77,20 +77,23 @@
   box-sizing: border-box;
 }
 
-.lp-page .lp-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
+/* Every section but the hero sits in the centered content column. Sections
+   come in any order the page's layout gives, so each one carries its own
+   spacing. */
+.lp-page .lp-section {
   max-width: var(--lp-content-max-width);
-  margin: 0 auto;
-  padding: 28px 24px 32px;
+  margin: 24px auto 0;
+  padding: 0 24px;
+}
+
+.lp-page .lp-hero + .lp-section {
+  margin-top: 28px;
 }
 
 /* ---- Hero ---- */
 
 /* Full-bleed image with the name and bio laid over its lower edge,
-   left-aligned to the same column as the content below. */
+   left-aligned to the same column as the sections below. */
 .lp-page .lp-hero {
   position: relative;
   display: flex;
@@ -196,23 +199,7 @@
   color: var(--lp-tile-text-color);
   text-align: left;
   text-decoration: none;
-  /* Springy: overshoots a touch on the way up, settles on the way down. */
-  transition:
-    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-.lp-page .lp-tile:hover,
-.lp-page .lp-tile:focus-visible {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: var(--lp-tile-hover-shadow);
-}
-
-.lp-page .lp-tile:active {
-  transform: translateY(-2px) scale(0.98);
-  transition-duration: 0.12s;
-}
-
 
 .lp-page .lp-tile:focus-visible {
   outline: 3px solid var(--lp-social-hover-color);
@@ -225,11 +212,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.lp-page .lp-tile:hover .lp-tile-media {
-  transform: scale(1.08);
 }
 
 .lp-page .lp-tile--image::after,
@@ -248,30 +230,13 @@
   line-height: 1.25;
   color: var(--lp-tile-text-color);
   overflow-wrap: anywhere;
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* An arrow that slides in after the label on hover. */
-.lp-page .lp-tile-label::after {
-  content: "\2192";
-  display: inline-block;
-  margin-left: 6px;
-  opacity: 0;
-  transform: translateX(-8px);
-  transition:
-    opacity 0.25s ease,
-    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
+/* Hover only bolds the label: the tile keeps its size and the text its
+   color. */
 .lp-page .lp-tile:hover .lp-tile-label,
 .lp-page .lp-tile:focus-visible .lp-tile-label {
-  transform: translateY(-2px);
-}
-
-.lp-page .lp-tile:hover .lp-tile-label::after,
-.lp-page .lp-tile:focus-visible .lp-tile-label::after {
-  opacity: 1;
-  transform: translateX(0);
+  font-weight: var(--lp-tile-label-hover-font-weight);
 }
 
 /* Show the video tile's poster (its background) instead of motion. */
@@ -279,30 +244,13 @@
   .lp-page .lp-tile--video video {
     display: none;
   }
-
-  .lp-page .lp-tile,
-  .lp-page .lp-tile-media,
-  .lp-page .lp-tile-label,
-  .lp-page .lp-tile-label::after {
-    transition: none;
-  }
-
-  .lp-page .lp-tile:hover,
-  .lp-page .lp-tile:focus-visible,
-  .lp-page .lp-tile:active,
-  .lp-page .lp-tile:hover .lp-tile-media,
-  .lp-page .lp-tile:hover .lp-tile-label,
-  .lp-page .lp-tile:focus-visible .lp-tile-label,
-  .lp-page .lp-tile-label::after {
-    transform: none;
-  }
-
 }
 
 /* ---- Footer ---- */
 
 .lp-page .lp-footer {
-  margin-top: 16px;
+  margin: 40px auto 0;
+  padding: 0 24px 32px;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;

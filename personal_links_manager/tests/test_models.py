@@ -1,8 +1,12 @@
+import importlib
+
 import pytest
+from django.apps import apps as django_apps
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from accounts.models import User
+from personal_links_manager import layout
 from personal_links_manager.models import LinkPage
 from personal_links_manager.utils import humanize_handle
 
@@ -52,3 +56,35 @@ def test_handle_regex_rejects_invalid_formats(owner, bad_handle):
     page = LinkPage(owner=owner, handle=bad_handle)
     with pytest.raises(ValidationError):
         page.full_clean()
+
+
+def test_new_page_gets_a_valid_default_draft_layout(owner):
+    page = LinkPage.objects.create(owner=owner, handle="my-cool-page")
+
+    assert layout.validate(page.draft_layout) == page.draft_layout
+    assert page.draft_layout["sections"][0]["displayName"] == "My Cool Page"
+    assert page.published_layout is None
+    assert page.published_at is None
+
+
+def test_saving_keeps_an_existing_draft_layout(owner):
+    page = LinkPage.objects.create(owner=owner, handle="my-cool-page")
+    draft = page.draft_layout
+
+    page.title = "Renamed"
+    page.save()
+
+    page.refresh_from_db()
+    assert page.draft_layout == draft
+
+
+def test_migration_backfills_a_draft_layout_for_existing_pages(owner):
+    page = LinkPage.objects.create(owner=owner, handle="old-page")
+    LinkPage.objects.filter(pk=page.pk).update(draft_layout={})
+
+    migration = importlib.import_module("personal_links_manager.migrations.0004_page_layout")
+    migration.backfill_draft_layouts(django_apps, None)
+
+    page.refresh_from_db()
+    assert layout.validate(page.draft_layout) == page.draft_layout
+    assert page.draft_layout["sections"][0]["displayName"] == "Old Page"

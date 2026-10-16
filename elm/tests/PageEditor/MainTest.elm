@@ -16,11 +16,20 @@ suite =
             \_ ->
                 let
                     json =
-                        """{"pageId": 1, "handle": "my-page", "title": "My Page", "username": "Ada", "csrfToken": "abc123", "apiBase": "/api/"}"""
+                        """{"pageId": 1, "handle": "my-page", "title": "My Page", "username": "Ada", "csrfToken": "abc123", "apiBase": "/api/", "draftLayout": {"version": 1, "sections": []}}"""
                 in
                 Decode.decodeString flagsDecoder json
                     |> Result.map .handle
                     |> Expect.equal (Ok "my-page")
+        , test "fails without a draft layout" <|
+            \_ ->
+                let
+                    json =
+                        """{"pageId": 1, "handle": "my-page", "title": "My Page", "username": "Ada", "csrfToken": "abc123", "apiBase": "/api/"}"""
+                in
+                Decode.decodeString flagsDecoder json
+                    |> Result.toMaybe
+                    |> Expect.equal Nothing
         ]
 
 

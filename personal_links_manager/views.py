@@ -67,6 +67,7 @@ def page_editor(request, handle):
             "username": request.user.display_name or request.user.email,
             "csrfToken": get_token(request),
             "apiBase": "/api/",
+            "draftLayout": page.draft_layout,
         },
     }
     return render(request, "personal_links_manager/page_editor.html", context)

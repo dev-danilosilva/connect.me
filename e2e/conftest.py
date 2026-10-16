@@ -10,6 +10,7 @@ import pytest
 
 from accounts.models import User
 from personal_links_manager.models import LinkPage
+from personal_links_manager.tests.layouts import sample_layout
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -35,3 +36,12 @@ def demo_user(transactional_db):
 @pytest.fixture
 def demo_page(demo_user):
     return LinkPage.objects.create(owner=demo_user, handle="existing-page")
+
+
+@pytest.fixture
+def demo_page_with_layout(demo_user):
+    """A page whose draft has the sample content: a hero, four socials and
+    five link tiles."""
+    return LinkPage.objects.create(
+        owner=demo_user, handle="ada", title="Ada", draft_layout=sample_layout()
+    )

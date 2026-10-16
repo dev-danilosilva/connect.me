@@ -78,7 +78,7 @@ Most of the app is server-rendered Django templates. Elm is used where a piece o
 
 Layout conventions in `elm/src/`:
 
-- **One folder per program**, named after it, with the entrypoint at `<Name>/Main.elm`. Modules only that program uses go next to it as `<Name>/*.elm`, e.g. `PageEditor/PagePreview.elm`, the link page as visitors see it, rendered in the editor's preview.
+- **One folder per program**, named after it, with the entrypoint at `<Name>/Main.elm`. Modules only that program uses go next to it as `<Name>/*.elm`, e.g. `PageEditor/Preview.elm`, the link page as visitors see it, rendered in the editor's preview.
 - **Shared modules** live under `elm/src/Lib/`, outside any program folder, as `Lib.<Module>`: `Lib.Format` (number and "YYYY-MM-DD" date formatting) and `Lib.List` (list helpers missing from elm/core). They hold no program-specific code.
 - `elm/tests/` mirrors `src/` (e.g. `tests/PageEditor/MainTest.elm`).
 
@@ -136,6 +136,8 @@ To add a value to the page editor's flags:
 3. Update the fallback `Flags …` value in `init` and the sample JSON in `elm/tests/PageEditor/MainTest.elm`.
 
 If the JSON and the decoder disagree, decoding fails silently and the app starts with empty fallback flags, so a blank title or missing data usually means a mismatch here.
+
+The page editor's `draftLayout` flag is the page's stored layout document, decoded by `PageEditor/Layout.elm` and rendered by `PageEditor/Preview.elm`. Its format, validation, API and versioning are described in [docs/page-layout-spec-v1.md](docs/page-layout-spec-v1.md).
 
 #### Testing
 
